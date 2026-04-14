@@ -11,7 +11,9 @@ TEST_DB_URL = os.getenv(
 
 
 def pytest_collection_modifyitems(items):
-    """Set loop_scope=session on all asyncio-marked tests so they share the engine loop."""
+    """Force all async tests into session loop scope so they share the session-scoped engine.
+    asyncpg connections are loop-bound; without this, function-scoped test loops conflict
+    with the session-scoped seeded_engine fixture on Python 3.10 / pytest-asyncio 0.24."""
     for item in items:
         if item.get_closest_marker("asyncio") is not None:
             item.add_marker(pytest.mark.asyncio(loop_scope="session"), append=False)
