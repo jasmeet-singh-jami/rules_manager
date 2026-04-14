@@ -1,0 +1,161 @@
+const BASE = '/api'
+
+// ── Types ──────────────────────────────────────────────────────────────────
+
+export interface Client {
+  id: string
+  code: string
+  name: string
+  description: string | null
+  created_at: string
+}
+
+export interface RuleType {
+  id: string
+  slug: string
+  name: string
+  pipeline_stage: number
+  drl_package: string
+  drl_imports: string
+  drl_functions: string | null
+}
+
+export interface Rule {
+  id: string
+  client_id: string
+  rule_type_id: string
+  name: string
+  description: string | null
+  tool: string | null
+  condition_raw: string | null
+  action_raw: string | null
+  condition_meta: unknown
+  action_meta: unknown
+  enabled: boolean
+  priority: string | null
+  window: number | null
+  created_at: string
+  updated_at: string
+}
+
+export interface Deployment {
+  id: string
+  client_id: string
+  version: string
+  status: 'draft' | 'deployed'
+  notes: string | null
+  created_at: string
+}
+
+export interface ParsedRulePreview {
+  name: string
+  condition_raw: string
+  action_raw: string
+}
+
+export interface ParsedFilePreview {
+  filename: string
+  package: string
+  rule_count: number
+  rules: ParsedRulePreview[]
+}
+
+export interface ImportConfirmRule {
+  client_id: string
+  rule_type_id: string
+  name: string
+  description?: string
+  tool?: string
+  condition_raw: string
+  action_raw: string
+}
+
+// ── Core request helper ───────────────────────────────────────────────────
+
+async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const headers: Record<string, string> = {}
+  if (init.body && typeof init.body === 'string') {
+    headers['Content-Type'] = 'application/json'
+  }
+  const res = await fetch(`${BASE}${path}`, { ...init, headers: { ...headers, ...init.headers as Record<string, string> } })
+  if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`)
+  if (res.status === 204) return undefined as T
+  return res.json() as Promise<T>
+}
+
+// ── Clients ───────────────────────────────────────────────────────────────
+
+export const getClients = () =>
+  request<Client[]>('/clients')
+
+export const createClient = (body: { code: string; name: string; description?: string }) =>
+  request<Client>('/clients', { method: 'POST', body: JSON.stringify(body) })
+
+export const updateClient = (id: string, body: { name?: string; description?: string }) =>
+  request<Client>(`/clients/${id}`, { method: 'PUT', body: JSON.stringify(body) })
+
+export const deleteClient = (id: string) =>
+  request<void>(`/clients/${id}`, { method: 'DELETE' })
+
+// ── Rule Types ────────────────────────────────────────────────────────────
+
+export const getRuleTypes = () =>
+  request<RuleType[]>('/rule-types')
+
+// ── Rules ─────────────────────────────────────────────────────────────────
+
+export interface RuleFilters {
+  client_id?: string
+  rule_type?: string
+  tool?: string
+  search?: string
+}
+
+export const getRules = (filters: RuleFilters = {}) => {
+  const params = new URLSearchParams()
+  if (filters.client_id) params.set('client_id', filters.client_id)
+  if (filters.rule_type) params.set('rule_type', filters.rule_type)
+  if (filters.tool) params.set('tool', filters.tool)
+  if (filters.search) params.set('search', filters.search)
+  const qs = params.toString()
+  return request<Rule[]>(`/rules${qs ? `?${qs}` : ''}`)
+}
+
+export const createRule = (body: Omit<Rule, 'id' | 'created_at' | 'updated_at'>) =>
+  request<Rule>('/rules', { method: 'POST', body: JSON.stringify(body) })
+
+export const updateRule = (id: string, body: Partial<Omit<Rule, 'id' | 'created_at' | 'updated_at'>>) =>
+  request<Rule>(`/rules/${id}`, { method: 'PUT', body: JSON.stringify(body) })
+
+export const deleteRule = (id: string) =>
+  request<void>(`/rules/${id}`, { method: 'DELETE' })
+
+export const copyRule = (id: string, target_client_id: string) =>
+  request<Rule>(`/rules/${id}/copy`, { method: 'POST', body: JSON.stringify({ target_client_id }) })
+
+// ── Deployments ───────────────────────────────────────────────────────────
+
+export const getDeployments = (client_id: string) =>
+  request<Deployment[]>(`/clients/${client_id}/deployments`)
+
+export const createDeployment = (body: { client_id: string; version: string; notes?: string }) =>
+  request<Deployment>('/deployments', { method: 'POST', body: JSON.stringify(body) })
+
+export const exportDeployment = (id: string): Promise<Response> =>
+  fetch(`${BASE}/deployments/${id}/export`)
+
+// ── Import ────────────────────────────────────────────────────────────────
+
+export const parseDrlFile = async (file: File): Promise<ParsedFilePreview> => {
+  const form = new FormData()
+  form.append('file', file)
+  const res = await fetch(`${BASE}/import/parse`, { method: 'POST', body: form })
+  if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`)
+  return res.json() as Promise<ParsedFilePreview>
+}
+
+export const confirmImport = (rules: ImportConfirmRule[]) =>
+  request<{ imported: number; rule_ids: string[] }>('/import/confirm', {
+    method: 'POST',
+    body: JSON.stringify({ rules }),
+  })
