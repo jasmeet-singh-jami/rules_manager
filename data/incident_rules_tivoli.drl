@@ -1,0 +1,44 @@
+package com.infy.ceh.management.autonomics.tasks.impl; 
+
+import com.infy.ceh.management.ems.dto.IPPIssue;
+import com.infy.ceh.management.ems.dto.IPPIncident;
+import com.infy.ceh.management.ems.dto.IncidentCreationRequestDto;
+import java.lang.String;
+import java.lang.Boolean;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.Arrays;
+import java.util.List;
+
+rule "IncCreationTivoli_1:"
+when
+    $incidentRequest : IncidentCreationRequestDto(  issue.source == "5")
+then
+	String environment=$incidentRequest.getIssue().getIssueResources().get(0).getEnvironmentName();
+    if(environment.equalsIgnoreCase("Production")){
+           $incidentRequest.getPostMap().put("assignment_group","AMS_ACC_L1.5 Support");                     
+    }else{
+		String alertName = $incidentRequest.getIssue().getName();
+        String regex = "(?<=on Workstation ).*";
+        Pattern pattern = Pattern.compile(regex);
+        Matcher matcher = pattern.matcher(alertName);
+        if (matcher.find()) {
+            String workstationName=matcher.group();
+            List<String> workstationList= Arrays.asList("BWAXPD10","BWAXPRD7","BWAXPRD8","NA1SNWFLKPR01","BWOEPNAJIP1","BWOEPCKMTP1","BWAXDV10","NA1SNWFLKQA01","BWAXDEV7","BWAXDEV8","NA1EPPP01","NA1EPPP02","NA1EPPP04","NA1EPQA02","NA1EPQA04");
+            if(workstationList.contains(workstationName.toUpperCase())){
+                $incidentRequest.getPostMap().put("assignment_group","AMS_ACC_L1.5 Support");                        
+            }else{
+				$incidentRequest.getPostMap().put("assignment_group","ISM - EOC Job Scheduling");
+			}
+        }
+	}
+	$incidentRequest.getPostMap().put("category","Software/Application");
+	$incidentRequest.getPostMap().put("subcategory","Batch Processing");
+	$incidentRequest.getPostMap().put("u_x_business_model" , "corporate");
+	$incidentRequest.getPostMap().put("u_region" , "EU");
+	$incidentRequest.getPostMap().put("impact", "2");
+	$incidentRequest.getPostMap().put("urgency", "3");
+	$incidentRequest.getPostMap().put("short_description", $incidentRequest.getIssue().getName());
+	$incidentRequest.getPostMap().put("description", $incidentRequest.getIssue().getDescription());
+	$incidentRequest.getPostMap().put("cmdb_ci","Tivoli");
+end

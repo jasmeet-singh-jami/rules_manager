@@ -1,0 +1,13 @@
+package com.infy.ceh.management.autonomics.tasks.impl;
+ 
+import com.infy.ceh.management.ems.dto.IPPAlert;
+import java.lang.String;
+import java.lang.Boolean;
+ 
+rule "AlertServiceClassifier_1"
+	when
+		alert:IPPAlert(sourceId matches ".*LogicMonitor*" || sourceId matches ".*Tivoli*")
+	then
+	System.out.println( "setting service number as event_mgmt_sw_1");
+	alert.setServiceName("event_mgmt_sw_1");
+end

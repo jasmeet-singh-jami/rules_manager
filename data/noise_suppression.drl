@@ -1,0 +1,159 @@
+package com.infy.ceh.management.autonomics.framework.tasks.impl; 
+
+import com.infy.ceh.management.ems.dto.NoiseSuppressionRequest;
+import com.infy.ceh.management.ems.dto.IPPGroupedAlerts;
+
+import java.lang.String;
+import java.lang.Boolean;
+import java.util.Arrays;
+import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import java.time.ZonedDateTime;
+import java.time.ZoneOffset;
+import java.time.Instant;
+import java.sql.Timestamp;
+
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeFormatterBuilder;
+import java.time.temporal.ChronoField;
+
+
+
+function String extractDeviceType(String text,String rgx) {
+	System.out.println("Applying REGEX" + rgx);
+	System.out.println("Text for REGEX" + text);
+    if (text == null) return null;
+    Pattern p = Pattern.compile(rgx);
+    Matcher m = p.matcher(text);
+    return m.find() ? m.group() : null;
+}
+ 
+function int getDurationAfterCreatedTime(IPPGroupedAlerts alert){
+		
+		System.out.println("start Time groupedAlerts" + alert.getCreatedTime());
+		
+		DateTimeFormatter fmt = new DateTimeFormatterBuilder()
+            .appendPattern("yyyy-MM-dd HH:mm:ss")
+            .appendLiteral('.')
+            .appendFraction(ChronoField.NANO_OF_SECOND, 1, 9, false)
+            .toFormatter();
+
+        LocalDateTime ldt = LocalDateTime.parse(alert.getCreatedTime(), fmt);
+        ZonedDateTime zdt = ldt.atZone(ZoneId.of("UTC"));
+        //return zdt.toInstant().toEpochMilli();/
+		
+        long startTimeInMillis = zdt.toInstant().toEpochMilli();
+        System.out.println("start Time In Millis" + startTimeInMillis);
+		ZonedDateTime utcNow = ZonedDateTime.now(ZoneOffset.UTC);
+		long endTimeInMillis = utcNow.toInstant().toEpochMilli();
+		System.out.println("end Time In Millis" + endTimeInMillis);
+        int interval = (int)(endTimeInMillis - startTimeInMillis)/(60*1000);
+        System.out.println("Interval :: "+interval);
+        return interval;
+    }
+
+rule "LogicMonitorNoiseSuppression_1"
+	when
+		
+		request:NoiseSuppressionRequest(groupedAlert.sourceId == "LogicMonitor" && groupedAlert.alertName matches "(?:.*CPU Core - High CPU Utilization)")
+	then
+		String resourceName = request.getGroupedAlert().getResourceId();
+		if(resourceName.contains("SDWAN")){
+			request.getGroupedAlert().setState("Closed");
+		}
+end
+
+rule "LogicMonitorNoiseSuppression_2"
+	when
+		request:NoiseSuppressionRequest(groupedAlert.sourceId == "LogicMonitor" && (groupedAlert.severity == "MAJOR" || groupedAlert.severity == "WARN") && getDurationAfterCreatedTime(groupedAlert)<10)
+	then
+		System.out.println("checking for LogicMonitorNoiseSuppression_2");
+		List<String> nwDeviceType=Arrays.asList("Meraki Security","Switch","Infoblox","Wireless Controller","Meraki Switch","F5","MX","Firewall","Access Point","Router","Meraki AP","Load Balancer");
+		String deviceTypeRegex = "(?<=Device Type : )(.+)";
+		System.out.println("Device Type Regex to Matched Alerts  = " + deviceTypeRegex);
+		String deviceType = extractDeviceType(request.getGroupedAlert().getDescription(),deviceTypeRegex).trim();
+		System.out.println("Alert Device Type Matched  = " + deviceType);
+		if(nwDeviceType.contains(deviceType)){
+			String value2 = "TRUE";
+			System.out.println("value2 to set is filtered" +value2);
+			request.getGroupedAlert().setIsAlertFiltered(value2);
+		}
+end
+
+rule "LogicMonitorNoiseSuppression_3"
+	when
+		request:NoiseSuppressionRequest(groupedAlert.sourceId == "LogicMonitor" && (groupedAlert.severity == "MAJOR" || groupedAlert.severity == "WARN") && getDurationAfterCreatedTime(groupedAlert)>=10)
+	then
+	System.out.println("checking for LogicMonitorNoiseSuppression_3");
+		List<String> nwDeviceType=Arrays.asList("Meraki Security","Switch","Infoblox","Wireless Controller","Meraki Switch","F5","MX","Firewall","Access Point","Router","Meraki AP","Load Balancer");
+		String deviceTypeRegex = "(?<=Device Type : )(.+)";
+		System.out.println("Device Type Regex to Matched Alerts  = " + deviceTypeRegex);
+		String deviceType = extractDeviceType(request.getGroupedAlert().getDescription(),deviceTypeRegex).trim();
+		System.out.println("Alert Device Type Matched  = " + deviceType);
+		if(nwDeviceType.contains(deviceType)){
+			String value2 = "false";
+			System.out.println("value2 to set is filtered" +value2);
+			request.getGroupedAlert().setIsAlertFiltered(value2);
+		}
+end
+
+rule "LogicMonitorNoiseSuppression_4"
+	when
+		request:NoiseSuppressionRequest(groupedAlert.sourceId == "LogicMonitor" && groupedAlert.alertName matches "(?:.*Ping PingLossPercent.*|.*The host.*is down.*)" && getDurationAfterCreatedTime(groupedAlert)<2)
+	then
+		System.out.println("checking for LogicMonitorNoiseSuppression_4");
+		List<String> nwDeviceType=Arrays.asList("Windows","windows");
+		String deviceTypeRegex = "(?<=Device Type : )(.+)";
+		System.out.println("Device Type Regex to Matched Alerts  = " + deviceTypeRegex);
+		String deviceType = extractDeviceType(request.getGroupedAlert().getDescription(),deviceTypeRegex).trim();
+		System.out.println("Alert Device Type Matched  = " + deviceType);
+		if(nwDeviceType.contains(deviceType)){
+			String value2 = "TRUE";
+			System.out.println("value2 to set is filtered" +value2);
+			request.getGroupedAlert().setIsAlertFiltered(value2);
+			
+		}
+end
+
+rule "LogicMonitorNoiseSuppression_5"
+	when
+		request:NoiseSuppressionRequest(groupedAlert.sourceId == "LogicMonitor" && groupedAlert.alertName matches "(?:.*Ping PingLossPercent.*|.*The host.*is down.*)" && getDurationAfterCreatedTime(groupedAlert)>=2)
+	then
+	System.out.println("checking for LogicMonitorNoiseSuppression_5");
+		List<String> nwDeviceType=Arrays.asList("Windows","windows");
+		String deviceTypeRegex = "(?<=Device Type : )(.+)";
+		System.out.println("Device Type Regex to Matched Alerts  = " + deviceTypeRegex);
+		String deviceType = extractDeviceType(request.getGroupedAlert().getDescription(),deviceTypeRegex).trim();
+		System.out.println("Alert Device Type Matched  = " + deviceType);
+		if(nwDeviceType.contains(deviceType)){
+			String value2 = "false";
+			System.out.println("value2 to set is filtered" +value2);
+			request.getGroupedAlert().setIsAlertFiltered(value2);
+			
+		}
+end
+
+rule "LogicMonitorNoiseSuppression_6"
+	when
+		
+		request:NoiseSuppressionRequest(groupedAlert.sourceId == "LogicMonitor" && groupedAlert.alertName matches "(?:.*Oracle Connection Status.*listenerStatusCode.*)")
+	then
+		request.getGroupedAlert().setState("Closed");
+end
+
+rule "LogicMonitorNoiseSuppression_7"
+	when
+		
+		request:NoiseSuppressionRequest(groupedAlert.sourceId == "LogicMonitor" && groupedAlert.alertName matches "(?:.*Cohesity_DataPlatform_Alerts.*)")
+	then
+		List<String> deviceNamesList=Arrays.asList("server1.example.com");
+		
+		if(deviceNamesList.contains(request.getGroupedAlert().getResourceId())){
+			request.getGroupedAlert().setState("Closed");
+		}
+		
+end

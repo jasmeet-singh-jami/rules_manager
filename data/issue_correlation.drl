@@ -1,0 +1,495 @@
+package com.infy.ceh.management.autonomics.framework.tasks.impl
+
+import com.infy.ceh.management.ems.dto.IPPGroupedAlerts;
+import java.lang.String;
+import java.util.List;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.Arrays;
+
+global java.util.HashMap clusteredAlerts;  
+global Integer index;                     
+
+
+
+function String extractPort(String alertName) {
+	Pattern port_pattern =  Pattern.compile("Interfaces_Critical-Port\\s+(\\d+)");
+    Matcher matcher = port_pattern.matcher(alertName);
+    return matcher.find() ? matcher.group(1) : "NA";
+}
+
+function java.util.Set<String> getPortFromAlertName(java.util.List alerts, String host) {
+    java.util.Set<String> portList = new java.util.HashSet<String>();
+    if (alerts == null) return portList;
+	host=host+" ";
+    for (Object o : alerts) {
+        IPPGroupedAlerts a = (IPPGroupedAlerts) o;
+        String alertName = a.getAlertName();
+        if (alertName.contains(host) ) {
+             String port = extractPort(a.getAlertName());
+		     portList.add(port);
+        }
+    }
+    return portList;
+}
+
+
+function java.util.List groupAlertsBasedonDeviceAndPort(String host,String port, java.util.List alerts) {
+    java.util.List group = new java.util.ArrayList();
+    if (alerts == null || host == null || port == null ) return group;
+	host=host+" ";
+	port="Port "+port+" ";
+    for (Object o : alerts) {
+        IPPGroupedAlerts a = (IPPGroupedAlerts) o;
+        String alertName = a.getAlertName();
+        if (alertName.contains(host) && alertName.contains(port)) {
+            group.add(a);
+        }
+    }
+    return group;
+}
+
+function String extractLmdId(String description) {
+    if (description == null) return null;
+    // Matches: "ID: LMD2585444"
+    Pattern p = Pattern.compile("(?i)\\bID:\\s*(LM(?:D|S|E)\\d+)\\b");
+    Matcher m = p.matcher(description);
+    if (m.find()) {
+        return m.group(1);
+    }
+    return null;
+}
+
+function java.util.Set<String> getLmdIds(java.util.List alerts) {
+    java.util.Set<String> ids = new java.util.HashSet<String>();
+    if (alerts == null) return ids;
+    for (Object o : alerts) {
+        IPPGroupedAlerts a = (IPPGroupedAlerts) o;
+        String id = extractLmdId(a.getDescription());
+        if (id != null) ids.add(id);
+    }
+    return ids;
+}
+
+function java.util.List getAlertsForLmdId(String lmdId, java.util.List alerts) {
+    java.util.List group = new java.util.ArrayList();
+    if (alerts == null || lmdId == null) return group;
+    for (Object o : alerts) {
+        IPPGroupedAlerts a = (IPPGroupedAlerts) o;
+        String id = extractLmdId(a.getDescription());
+        if (lmdId.equals(id)) {
+            group.add(a);
+        }
+    }
+    return group;
+}
+
+function java.util.Set<String> getAffectedResources(java.util.List alerts) {
+    java.util.Set<String> resources = new java.util.HashSet<String>();
+    if (alerts == null) return resources;
+    for (Object o : alerts) {
+        IPPGroupedAlerts a = (IPPGroupedAlerts) o;
+        if (a.getResourceId() != null) resources.add(a.getResourceId());
+    }
+    return resources;
+}
+
+function java.util.List getAlertsforSameAffectedResource(String resource, java.util.List alerts) {
+    java.util.List group = new java.util.ArrayList();
+    if (alerts == null || resource == null) return group;
+    for (Object o : alerts) {
+        IPPGroupedAlerts a = (IPPGroupedAlerts) o;
+        String alertResource = a.getResourceId();
+        if (resource.equals(alertResource)) {
+            group.add(a);
+        }
+    }
+    return group;
+}
+
+function java.util.Set<String> getAffectedResourcesAlertKey(java.util.List alerts){
+	java.util.Set<String> affectedResourceAlertKey=new java.util.HashSet<String>();
+	for(Object o:alerts){
+		IPPGroupedAlerts grpAlert=(IPPGroupedAlerts)o;
+		affectedResourceAlertKey.add(grpAlert.getResourceId()+"MARK"+grpAlert.getAlertName());
+	}
+	return affectedResourceAlertKey;
+} 
+
+function List getAlertsForResourceAlertKey(String resourceAlertKey, java.util.List alerts){
+	java.util.List group = new java.util.ArrayList();
+	String[] keys=resourceAlertKey.split("MARK");
+	String resource=keys[0];
+	String alertName=keys[1];
+	for(Object o:alerts){
+		IPPGroupedAlerts grpAlert=(IPPGroupedAlerts)o;				
+		if(grpAlert.getResourceId().equals(resource) && grpAlert.getAlertName().equals(alertName)){			
+			group.add(grpAlert);
+		}		
+	}
+	return group;
+} 
+
+
+function String extractHostName(String text,String rgx) {
+    if (text == null) return null;
+    Pattern p = Pattern.compile(rgx);
+    Matcher m = p.matcher(text);
+    return m.find() ? m.group() : null;
+}
+
+function java.util.Set<String> getAffectedHosts(java.util.List alerts,String rgx) {
+    java.util.Set<String> hostNames = new java.util.HashSet<String>();
+    if (alerts == null) return hostNames;
+    for (Object o : alerts) {
+        IPPGroupedAlerts a = (IPPGroupedAlerts) o;
+        String host = extractHostName(a.getAlertName(),rgx);
+        if (host != null) hostNames.add(host.trim());
+    }
+    return hostNames;
+}
+
+function java.util.List getAlertsforSameAffectedHosts(String host, java.util.List alerts) {
+    java.util.List group = new java.util.ArrayList();
+    if (alerts == null || host == null) return group;
+    for (Object o : alerts) {
+        IPPGroupedAlerts a = (IPPGroupedAlerts) o;
+        String alertName = a.getAlertName();
+        if (alertName.contains(host)) {
+            group.add(a);
+        }
+    }
+    return group;
+}
+
+function java.util.List groupAlertsBasedonHostAndIntrfaces(String iname, String host, java.util.List alerts) {
+    java.util.List group = new java.util.ArrayList();
+    if (alerts == null || host == null || iname == null ) return group;
+    for (Object o : alerts) {
+        IPPGroupedAlerts a = (IPPGroupedAlerts) o;
+        String alertName = a.getAlertName();
+        if (alertName.contains(host) && alertName.contains(iname)) {
+            group.add(a);
+        }
+    }
+    return group;
+}
+
+function String extractDeviceType(String text,String rgx) {
+	System.out.println("Applying REGEX" + rgx);
+	System.out.println("Text for REGEX" + text);
+    if (text == null) return null;
+    Pattern p = Pattern.compile(rgx);
+    Matcher m = p.matcher(text);
+    return m.find() ? m.group() : null;
+}
+
+function java.util.List getAlertsBasedDeviTypeAffectedResource(String resource, java.util.List alerts) {
+    java.util.List group = new java.util.ArrayList();
+	List<String> nwDeviceType=Arrays.asList("GCC Dashboard");
+	String deviceTypeRegex = "(?<=Device Type : )(.+)";
+    if (alerts == null || resource == null) return group;
+    for (Object o : alerts) {
+        IPPGroupedAlerts a = (IPPGroupedAlerts) o;
+        String alertResource = a.getResourceId();
+		String deviceType = extractDeviceType(a.getDescription(),deviceTypeRegex).trim();
+        if (resource.equals(alertResource) && nwDeviceType.contains(deviceType)) {
+            group.add(a);
+        }
+    }
+    return group;
+}
+
+rule "AlertsCorrelation_default_1_0 :"
+when
+    // Host inserts a single List<IPPGroupedAlerts> fact with raw alerts
+    $alertsRawList : List()
+
+    $matchedAlertList : List() from collect(       
+			IPPGroupedAlerts(sourceId == "LogicMonitor" && duration < 24 && alertName matches "(?:The host.*is down.*|.*Volume Capacity.*PercentUsed.*|.*System Uptime UptimeSeconds|.*Ping PingLossPercent)")  from $alertsRawList;		
+    )
+
+    // Optional: constrain the spread of durations to ensure temporal proximity
+    accumulate(
+        IPPGroupedAlerts($duration : duration) from $matchedAlertList;
+        $min : min($duration), $max : max($duration);
+        $max - $min < 24
+    )
+then
+    System.out.println("Matched Alerts  = " + $matchedAlertList.size());
+    java.util.Set affResources = getAffectedResources($matchedAlertList);
+    for (Object key : affResources) {
+        String resource = (String) key;
+        java.util.List alerts =  getAlertsBasedDeviTypeAffectedResource(resource, $matchedAlertList);
+		System.out.println("Matched Alerts (Resource 24h) = " + $matchedAlertList.size());
+        if (alerts.size() > 1) {
+            System.out.println("Cluster for Resource " + resource + " size=" + alerts.size());
+            clusteredAlerts.put(index, alerts);
+            index++;
+            kcontext.getKnowledgeRuntime().setGlobal("index", Integer.valueOf(index));
+
+            // Prevent reprocessing downstream
+            $alertsRawList.removeAll(alerts);
+        }
+		System.out.println("resource "+resource+"-" + $alertsRawList.size());
+    }
+end
+
+rule "AlertsCorrelation_default_1 :"
+when
+    // Host inserts a single List<IPPGroupedAlerts> fact with raw alerts
+    $alertsRawList : List()
+
+    $matchedAlertList : List() from collect(       
+			IPPGroupedAlerts(sourceId == "LogicMonitor" && duration < 24 && alertName matches "(?:The host.*is down.*|.*is suffering ping loss.*)")  from $alertsRawList;		
+    )
+
+    // Optional: constrain the spread of durations to ensure temporal proximity
+    accumulate(
+        IPPGroupedAlerts($duration : duration) from $matchedAlertList;
+        $min : min($duration), $max : max($duration);
+        $max - $min < 24
+    )
+then
+    System.out.println("Matched Alerts  = " + $matchedAlertList.size());
+    java.util.Set affResources = getAffectedResources($matchedAlertList);
+    for (Object key : affResources) {
+        String resource = (String) key;
+        java.util.List alerts = getAlertsforSameAffectedResource(resource, $matchedAlertList);
+		System.out.println("Matched Alerts (Resource 24h) = " + $matchedAlertList.size());
+        if (alerts.size() > 1) {
+            System.out.println("Cluster for Resource " + resource + " size=" + alerts.size());
+            clusteredAlerts.put(index, alerts);
+            index++;
+            kcontext.getKnowledgeRuntime().setGlobal("index", Integer.valueOf(index));
+
+            // Prevent reprocessing downstream
+            $alertsRawList.removeAll(alerts);
+        }
+		System.out.println("resource "+resource+"-" + $alertsRawList.size());
+    }
+end
+
+rule "AlertsCorrelation_default_2 :"
+when
+    // Host inserts a single List<IPPGroupedAlerts> fact with raw alerts
+    $alertsRawList : List()
+
+    $matchedAlertList : List() from collect(       
+			IPPGroupedAlerts(sourceId == "LogicMonitor" && duration < 24 && alertName matches "(?:.*Meraki Access Point Health status|.*Ping PingLossPercent)|.*Meraki Switch Health status")  from $alertsRawList;		
+    )
+
+    // Optional: constrain the spread of durations to ensure temporal proximity
+    accumulate(
+        IPPGroupedAlerts($duration : duration) from $matchedAlertList;
+        $min : min($duration), $max : max($duration);
+        $max - $min < 24
+    )
+then
+    System.out.println("Matched Alerts  = " + $matchedAlertList.size());
+    java.util.Set affResources = getAffectedResources($matchedAlertList);
+    for (Object key : affResources) {
+        String resource = (String) key;
+        java.util.List alerts = getAlertsforSameAffectedResource(resource, $matchedAlertList);
+		System.out.println("Matched Alerts (Resource 24h) = " + $matchedAlertList.size());
+        if (alerts.size() > 1) {
+            System.out.println("Cluster for Resource " + resource + " size=" + alerts.size());
+            clusteredAlerts.put(index, alerts);
+            index++;
+            kcontext.getKnowledgeRuntime().setGlobal("index", Integer.valueOf(index));
+
+            // Prevent reprocessing downstream
+            $alertsRawList.removeAll(alerts);
+        }
+		System.out.println("resource "+resource+"-" + $alertsRawList.size());
+    }
+end
+
+rule "AlertsCorrelation_default_3 :"
+when
+    // Host inserts a single List<IPPGroupedAlerts> fact with raw alerts
+    $alertsRawList : List()
+
+    $matchedAlertList : List() from collect(       
+			IPPGroupedAlerts(sourceId == "LogicMonitor" && duration < 24 && alertName matches "(?:.*VMware Alerts.*connection and power state State|.*VMware vSphere ESXi Host Status.*|.*VMware Alerts.*Network uplink redundancy lost State|.*VMware Host Status.*SystemHealth)")  from $alertsRawList;		
+    )
+
+    // Optional: constrain the spread of durations to ensure temporal proximity
+    accumulate(
+        IPPGroupedAlerts($duration : duration) from $matchedAlertList;
+        $min : min($duration), $max : max($duration);
+        $max - $min < 24
+    )
+then
+     System.out.println("Matched Alerts  = " + $matchedAlertList.size());
+	String hostRegex = "(?<=VMware Alerts-).*?(?=\\/Host connection and power state State)|(?<=VMware vSphere ESXi Host Status-)(.*?)(?=\\s+Status)|(?<=VMware vSphere ESXi Host Status-)(.*?)(?=\\s+ConnectionState)|(?<=VMware Alerts-).*?(?=\\/Network uplink redundancy lost State)|(?<=VMware Host Status-)(.*?)(?=\\s+SystemHealth)";
+	System.out.println("Regex to Matched Alerts  = " + hostRegex);
+    java.util.Set affectedHosts = getAffectedHosts($matchedAlertList,hostRegex);
+    for (Object key : affectedHosts) {
+        String host = (String) key;
+        java.util.List alerts = getAlertsforSameAffectedHosts(host, $matchedAlertList);
+		System.out.println("Matched Alerts (Host 24h) = " + $matchedAlertList.size());
+        if (alerts.size() > 1) {
+            System.out.println("Cluster for host " + host + " size=" + alerts.size());
+            clusteredAlerts.put(index, alerts);
+            index++;
+            kcontext.getKnowledgeRuntime().setGlobal("index", Integer.valueOf(index));
+
+            // Prevent reprocessing downstream
+            $alertsRawList.removeAll(alerts);
+        }
+		System.out.println("host "+host+"-" + $alertsRawList.size());
+    }
+end
+
+rule "AlertsCorrelation_default_4 : "
+when
+    $alertsRawList : List()
+    $matchedAlertList : List() from collect(       
+			IPPGroupedAlerts(sourceId == "LogicMonitor" && duration < 24)  from $alertsRawList;		
+    )
+
+    // Optional: constrain the spread of durations to ensure temporal proximity
+    accumulate(
+        IPPGroupedAlerts($duration : duration) from $matchedAlertList;
+        $min : min($duration), $max : max($duration);
+        $max - $min < 24
+    )
+then
+	java.util.Set affectedResourcesAlertKeys=getAffectedResourcesAlertKey($matchedAlertList);	
+		  for(Object key : affectedResourcesAlertKeys){
+			String resourceAlertKey=(String) key;
+			java.util.List alerts= getAlertsForResourceAlertKey(resourceAlertKey, $matchedAlertList);
+			if(alerts.size() > 1){
+				System.out.println("Alerts for resourceAlertKey: "+ resourceAlertKey);
+				clusteredAlerts.put(index,alerts);
+				index++;
+				kcontext.getKnowledgeRuntime().setGlobal( "index", Integer.valueOf(index));
+				$alertsRawList.removeAll(alerts);
+			}			
+		}	
+end
+
+rule "AlertsCorrelation_default_5 :"
+when
+    // Host inserts a single List<IPPGroupedAlerts> fact with raw alerts
+    $alertsRawList : List()
+
+    $matchedAlertList : List() from collect(       
+			IPPGroupedAlerts(sourceId == "LogicMonitor" && duration < 24 && alertName matches "(?:.*Interfaces.*StatusFlap)")  from $alertsRawList;		
+    )
+
+    // Optional: constrain the spread of durations to ensure temporal proximity
+    accumulate(
+        IPPGroupedAlerts($duration : duration) from $matchedAlertList;
+        $min : min($duration), $max : max($duration);
+        $max - $min < 24
+    )
+then
+     
+	System.out.println("Matched Alerts  = " + $matchedAlertList.size());
+	 
+	java.util.Set affResources = getAffectedResources($matchedAlertList);
+	String interfacesRegex = "eth\\d+";
+	System.out.println("Regex to Matched Alerts  = " + interfacesRegex);
+    java.util.Set affectedInterfaces = getAffectedHosts($matchedAlertList,interfacesRegex);
+    for (Object key : affResources) {
+		String host = (String) key;
+		for (Object key1 : affectedInterfaces) {
+			String iname = (String) key1;
+			java.util.List alerts = groupAlertsBasedonHostAndIntrfaces(iname,host ,$matchedAlertList);
+			System.out.println("Matched Alerts (Host 24h) = " + $matchedAlertList.size());
+			if (alerts.size() > 1) {
+				System.out.println("Cluster for host " + host + " size=" + alerts.size());
+				clusteredAlerts.put(index, alerts);
+				index++;
+				kcontext.getKnowledgeRuntime().setGlobal("index", Integer.valueOf(index));
+
+				// Prevent reprocessing downstream
+				$alertsRawList.removeAll(alerts);
+			}
+			System.out.println("host "+host+"-" + $alertsRawList.size());
+		}
+    }
+end
+
+rule "AlertsCorrelation_default_6 :"
+when
+    // Host inserts a single List<IPPGroupedAlerts> fact with raw alerts
+    $alertsRawList : List()
+
+    $matchedAlertList : List() from collect(       
+			IPPGroupedAlerts(sourceId == "LogicMonitor" && duration < 24 && alertName matches "(?:.*Meraki Switch Interfaces_Critical-Port.*)")  from $alertsRawList;		
+    )
+    // Optional: constrain the spread of durations to ensure temporal proximity
+    accumulate(
+        IPPGroupedAlerts($duration : duration) from $matchedAlertList;
+        $min : min($duration), $max : max($duration);
+        $max - $min < 24
+    )
+then    
+	System.out.println("Meraki Matched Alerts  = " + $matchedAlertList.size());
+	java.util.Set affResources = getAffectedResources($matchedAlertList);
+	System.out.println("affResources  = " + affResources);
+    for (Object key : affResources) {
+		String host = (String) key;
+		java.util.Set affectedPort = getPortFromAlertName($matchedAlertList,host);
+		System.out.println("host  = " + host);
+		System.out.println("affectedPort  = " + affectedPort);
+		for (Object key1 : affectedPort) {
+			String port = (String) key1;
+			java.util.List alerts = groupAlertsBasedonDeviceAndPort(host,port, $matchedAlertList);
+			System.out.println("Matched Alerts (Host 24h) = " + $matchedAlertList.size());
+			if (alerts.size() > 1) {
+				System.out.println("Cluster for host " + host + " size=" + alerts.size());
+				clusteredAlerts.put(index, alerts);
+				index++;
+				kcontext.getKnowledgeRuntime().setGlobal("index", Integer.valueOf(index));
+				// Prevent reprocessing downstream
+				$alertsRawList.removeAll(alerts);
+			}
+			System.out.println("host "+host+"-" + $alertsRawList.size());
+		}
+    }
+end
+
+
+rule "AlertsCorrelation_default_0 : Default correlation LMD"
+when
+    // Host inserts a single List<IPPGroupedAlerts> fact with raw alerts
+    $alertsRawList : List()
+
+    // Collect alerts that have an LMD ID in their description and are within 24h
+    $matchedAlertList : List() from collect(       
+			IPPGroupedAlerts(sourceId == "LogicMonitor" && duration < 24)  from $alertsRawList;		
+    )
+
+    // Optional: constrain the spread of durations to ensure temporal proximity
+    accumulate(
+        IPPGroupedAlerts($duration : duration) from $matchedAlertList;
+        $min : min($duration), $max : max($duration);
+        $max - $min < 24
+    )
+then
+    System.out.println("Matched Alerts (LMD 24h) = " + $matchedAlertList.size());
+
+    java.util.Set lmdIds = getLmdIds($matchedAlertList);
+    for (Object key : lmdIds) {
+        String lmdId = (String) key;
+        java.util.List alerts = getAlertsForLmdId(lmdId, $matchedAlertList);
+        if (alerts.size() > 1) {
+            System.out.println("Cluster for LMD " + lmdId + " size=" + alerts.size());
+            clusteredAlerts.put(index, alerts);
+            index++;
+            kcontext.getKnowledgeRuntime().setGlobal("index", Integer.valueOf(index));
+
+            // Prevent reprocessing downstream
+            $alertsRawList.removeAll(alerts);
+        }
+		System.out.println("lmdId "+lmdId+"-" + $alertsRawList.size());
+    }
+end

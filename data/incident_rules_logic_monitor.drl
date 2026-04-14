@@ -1,0 +1,183 @@
+package com.infy.ceh.management.autonomics.tasks.impl; 
+
+import com.infy.ceh.management.ems.dto.IPPIssue;
+import com.infy.ceh.management.ems.dto.IPPIncident;
+import com.infy.ceh.management.ems.dto.IncidentCreationRequestDto;
+import java.lang.String;
+import java.lang.Boolean;
+import java.util.List;
+import java.util.Arrays;
+
+function java.lang.String getAssignmentGroup(String name) {
+	System.out.println("Short Decription = " +name);
+    if (name == null) return "ISM - EOC Monitoring";
+    
+	String groupName = "";
+	
+	if(name.contains("MAO Order Management")){
+		groupName = "Asia WMS";
+	}else if((name.contains("Netskope") || name.contains("NetSkope")) && (name.contains("Publisher") || name.contains("IPSEC Tunnel") || name.contains("GRE Tunnel"))){
+		groupName = "ISM - Network";
+	}else if(name.contains("Netskope") || name.contains("NetSkope")){
+		groupName = "ISM - Security Netskope";
+	}else{
+		groupName = "ISM - EOC Monitoring";
+	}
+	System.out.println("Assignment group for INC creation is  = "+groupName);
+    return groupName;
+}
+
+rule "IncCreationLogicMonitor_1:"
+when
+    $incidentRequest : IncidentCreationRequestDto(  issue.source == "4" && issue.severity == "CRITICAL" && (issue.name matches "^(?!.*vSphere Distributed Switch).*"))
+then
+	$incidentRequest.getPostMap().put("category","Infrastructure");
+	$incidentRequest.getPostMap().put("subcategory","Other");
+	$incidentRequest.getPostMap().put("u_x_business_model" , "corporate");
+	$incidentRequest.getPostMap().put("u_region" , "EU");
+	$incidentRequest.getPostMap().put("impact", "2");
+	$incidentRequest.getPostMap().put("urgency", "2");
+	$incidentRequest.getPostMap().put("assignment_group",getAssignmentGroup($incidentRequest.getIssue().getName()));
+	$incidentRequest.getPostMap().put("short_description", $incidentRequest.getIssue().getName());
+	$incidentRequest.getPostMap().put("description", $incidentRequest.getIssue().getDescription());
+	$incidentRequest.getPostMap().put("cmdb_ci",$incidentRequest.getIssue().getIssueResources().get(0).getResourceName());
+end
+
+rule "IncCreationLogicMonitor_2:"
+when
+    $incidentRequest : IncidentCreationRequestDto(  issue.source == "4" && issue.severity == "CRITICAL" && (issue.name matches ".*Oracle TableSpace Usage.*"))
+then
+	$incidentRequest.getPostMap().put("category","Infrastructure");
+	$incidentRequest.getPostMap().put("subcategory","Other");
+	$incidentRequest.getPostMap().put("u_x_business_model" , "corporate");
+	$incidentRequest.getPostMap().put("u_region" , "EU");
+	$incidentRequest.getPostMap().put("impact", "3");
+	$incidentRequest.getPostMap().put("urgency", "2");
+	$incidentRequest.getPostMap().put("assignment_group",getAssignmentGroup($incidentRequest.getIssue().getName()));
+	$incidentRequest.getPostMap().put("short_description", $incidentRequest.getIssue().getName());
+	$incidentRequest.getPostMap().put("description", $incidentRequest.getIssue().getDescription());
+	$incidentRequest.getPostMap().put("cmdb_ci",$incidentRequest.getIssue().getIssueResources().get(0).getResourceName());
+end
+
+rule "IncCreationLogicMonitor_3:"
+when
+    $incidentRequest : IncidentCreationRequestDto(  issue.source == "4" && issue.severity == "CRITICAL" && (issue.name matches ".*Oracle Connection Status.*"))
+then
+	$incidentRequest.getPostMap().put("category","Infrastructure");
+	$incidentRequest.getPostMap().put("subcategory","Other");
+	$incidentRequest.getPostMap().put("u_x_business_model" , "corporate");
+	$incidentRequest.getPostMap().put("u_region" , "EU");
+	$incidentRequest.getPostMap().put("impact", "2");
+	$incidentRequest.getPostMap().put("urgency", "1");
+	$incidentRequest.getPostMap().put("assignment_group",getAssignmentGroup($incidentRequest.getIssue().getName()));
+	$incidentRequest.getPostMap().put("short_description", $incidentRequest.getIssue().getName());
+	$incidentRequest.getPostMap().put("description", $incidentRequest.getIssue().getDescription());
+	$incidentRequest.getPostMap().put("cmdb_ci",$incidentRequest.getIssue().getIssueResources().get(0).getResourceName());
+end
+
+rule "IncCreationLogicMonitor_4:"
+when
+    $incidentRequest : IncidentCreationRequestDto(  issue.source == "4" &&  issue.severity=="MAJOR" && (issue.name matches "^(?!.*(vSphere Distributed Switch|Oracle Connection Status|Oracle TableSpace Usage)).*"))
+then
+	$incidentRequest.getPostMap().put("category","Infrastructure");
+	$incidentRequest.getPostMap().put("subcategory","Other");
+	$incidentRequest.getPostMap().put("u_x_business_model" , "corporate");
+	$incidentRequest.getPostMap().put("u_region" , "EU");
+	$incidentRequest.getPostMap().put("impact", "2");
+	$incidentRequest.getPostMap().put("urgency", "2");
+	$incidentRequest.getPostMap().put("assignment_group",getAssignmentGroup($incidentRequest.getIssue().getName()));
+	$incidentRequest.getPostMap().put("short_description", $incidentRequest.getIssue().getName());
+	$incidentRequest.getPostMap().put("description", $incidentRequest.getIssue().getDescription());
+	$incidentRequest.getPostMap().put("cmdb_ci",$incidentRequest.getIssue().getIssueResources().get(0).getResourceName());
+end
+
+rule "IncCreationLogicMonitor_5:"
+when
+    $incidentRequest : IncidentCreationRequestDto( issue.source == "4" && issue.severity == "WARN" &&
+	(issue.name matches "(?!.*(PacketsDroppedRx|PacketsReceivedDiscarded|Ping average|Ping sentpkts|OutDiscardPercent|DNS status|CPUBusyPercent|CPU Cores|Host CPU usage State|SystemHealth|VMware vSphere Datastore Status|VMware vSphere ESXi Host Status|DiskReadLatency|VMware vSphere Datastore Capacity|vSphere Distributed Switch|Oracle Connection Status|Oracle TableSpace Usage).*)"))
+then
+	
+	$incidentRequest.getPostMap().put("category","Infrastructure");
+	$incidentRequest.getPostMap().put("subcategory","Other");
+	$incidentRequest.getPostMap().put("u_x_business_model" , "corporate");
+	$incidentRequest.getPostMap().put("u_region" , "EU");
+	$incidentRequest.getPostMap().put("impact", "2");
+	$incidentRequest.getPostMap().put("urgency", "3");
+	$incidentRequest.getPostMap().put("assignment_group",getAssignmentGroup($incidentRequest.getIssue().getName()));
+	$incidentRequest.getPostMap().put("short_description", $incidentRequest.getIssue().getName());
+	$incidentRequest.getPostMap().put("description", $incidentRequest.getIssue().getDescription());
+	$incidentRequest.getPostMap().put("cmdb_ci",$incidentRequest.getIssue().getIssueResources().get(0).getResourceName());
+end
+
+rule "IncCreationLogicMonitor_6:"
+when
+    $incidentRequest : IncidentCreationRequestDto(  issue.source == "4" && issue.severity == "CRITICAL"  && issue.name matches ".*The host.*is down" && issue.description matches "(?s).*Device Type : Logicmonitor Collectors.*")
+then
+	$incidentRequest.getPostMap().put("category","Infrastructure");
+	$incidentRequest.getPostMap().put("subcategory","Other");
+	$incidentRequest.getPostMap().put("u_x_business_model" , "corporate");
+	$incidentRequest.getPostMap().put("u_region" , "EU");
+	$incidentRequest.getPostMap().put("impact", "2");
+	$incidentRequest.getPostMap().put("urgency", "1");
+	$incidentRequest.getPostMap().put("assignment_group",getAssignmentGroup($incidentRequest.getIssue().getName()));
+	$incidentRequest.getPostMap().put("short_description", $incidentRequest.getIssue().getName());
+	$incidentRequest.getPostMap().put("description", $incidentRequest.getIssue().getDescription());
+	$incidentRequest.getPostMap().put("cmdb_ci",$incidentRequest.getIssue().getIssueResources().get(0).getResourceName());
+end
+
+rule "IncCreationLogicMonitor_7:"
+when
+    $incidentRequest : IncidentCreationRequestDto(  issue.source == "4" && (issue.severity == "CRITICAL" || issue.severity == "MAJOR" || issue.severity == "WARN")  && issue.name matches ".*Veeam Jobs: Backups-.*Status.*")
+then
+	$incidentRequest.getPostMap().put("category","Infrastructure");
+	$incidentRequest.getPostMap().put("subcategory","Other");
+	$incidentRequest.getPostMap().put("u_x_business_model" , "corporate");
+	$incidentRequest.getPostMap().put("u_region" , "EU");
+	$incidentRequest.getPostMap().put("impact", "2");
+	$incidentRequest.getPostMap().put("urgency", "3");
+	$incidentRequest.getPostMap().put("assignment_group",getAssignmentGroup($incidentRequest.getIssue().getName()));
+	$incidentRequest.getPostMap().put("short_description", $incidentRequest.getIssue().getName());
+	$incidentRequest.getPostMap().put("description", $incidentRequest.getIssue().getDescription());
+	$incidentRequest.getPostMap().put("cmdb_ci",$incidentRequest.getIssue().getIssueResources().get(0).getResourceName());
+end
+
+rule "IncCreationLogicMonitor_8:"
+when
+    $incidentRequest : IncidentCreationRequestDto(  issue.source == "4" && (issue.severity == "CRITICAL" || issue.severity == "MAJOR")  && issue.name matches "(?:.*Cohesity_DataPlatform_Alerts.*|.*WMI is not accessible. See error message for likely issue.*|.*Veeam Jobs.*|.*.*Veeam Jobs: Backups-.*Status.*)")
+then
+	$incidentRequest.getPostMap().put("category","Infrastructure");
+	$incidentRequest.getPostMap().put("subcategory","Other");
+	$incidentRequest.getPostMap().put("u_x_business_model" , "corporate");
+	$incidentRequest.getPostMap().put("u_region" , "EU");
+	$incidentRequest.getPostMap().put("impact", "2");
+	$incidentRequest.getPostMap().put("urgency", "3");
+	$incidentRequest.getPostMap().put("assignment_group",getAssignmentGroup($incidentRequest.getIssue().getName()));
+	$incidentRequest.getPostMap().put("short_description", $incidentRequest.getIssue().getName());
+	$incidentRequest.getPostMap().put("description", $incidentRequest.getIssue().getDescription());
+	$incidentRequest.getPostMap().put("cmdb_ci",$incidentRequest.getIssue().getIssueResources().get(0).getResourceName());
+end
+
+rule "IncCreationLogicMonitor_9:"
+when
+    $incidentRequest : IncidentCreationRequestDto(  issue.source == "4" && (issue.severity == "CRITICAL" || issue.severity == "MAJOR")  && issue.name matches "(?:.*Volume Capacity.*PercentUsed.*|.*MemoryUtilizationPercent.*|.*CPUBusyPercent.*)")
+then
+	System.out.println("IncCreationLogicMonitor_9 Short Decription = " +$incidentRequest.getIssue().getName());
+	List<String> deviceNamesList=Arrays.asList("BWOBODSP1","BWOBOLUMP1","BWOBOP01","BWOBOP02","BWOBOWBP01","BWOBOWBP02");
+	System.out.println("Host names for priority setting = " +deviceNamesList.toString());
+	$incidentRequest.getPostMap().put("category","Infrastructure");
+	$incidentRequest.getPostMap().put("subcategory","Other");
+	$incidentRequest.getPostMap().put("u_x_business_model" , "corporate");
+	$incidentRequest.getPostMap().put("u_region" , "EU");
+	System.out.println("Incident Device Matched  = " + $incidentRequest.getIssue().getIssueResources().get(0).getResourceName());
+	if(deviceNamesList.contains($incidentRequest.getIssue().getIssueResources().get(0).getResourceName())){
+		$incidentRequest.getPostMap().put("impact", "1");
+		$incidentRequest.getPostMap().put("urgency", "2");
+	}else{
+		$incidentRequest.getPostMap().put("impact", "2");
+		$incidentRequest.getPostMap().put("urgency", "3");
+	}
+	$incidentRequest.getPostMap().put("assignment_group",getAssignmentGroup($incidentRequest.getIssue().getName()));
+	$incidentRequest.getPostMap().put("short_description", $incidentRequest.getIssue().getName());
+	$incidentRequest.getPostMap().put("description", $incidentRequest.getIssue().getDescription());
+	$incidentRequest.getPostMap().put("cmdb_ci",$incidentRequest.getIssue().getIssueResources().get(0).getResourceName());
+end

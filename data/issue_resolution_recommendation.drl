@@ -1,0 +1,39 @@
+package com.infy.ceh.management.autonomics.framework.tasks.impl;
+//generated from Decision Table
+import com.infy.ceh.management.ems.dto.IPPIssue;
+import com.infy.ceh.management.ems.dto.RecommendationRequest;
+import java.lang.String;
+import java.lang.Boolean;
+
+import java.util.Arrays;
+import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+// rule values at A9, header at A4
+
+
+function String extractDeviceType(String text,String rgx) {
+	System.out.println("Applying REGEX" + rgx);
+	System.out.println("Text for REGEX" + text);
+    if (text == null) return null;
+    Pattern p = Pattern.compile(rgx);
+    Matcher m = p.matcher(text);
+    return m.find() ? m.group() : null;
+}
+
+rule "IssueRecommendation_1"
+	when
+		recommendationConfig:RecommendationRequest(cehIssue.name matches "(?:.*Ping PingLossPercent.*|.*System Uptime.*)")
+	then
+	System.out.println("checking for LogicMonitorNoiseSuppression_4");
+		List<String> nwDeviceType=Arrays.asList("Windows","windows","MSSQL");
+		String deviceTypeRegex = "(?<=Device Type : )(.+)";
+		System.out.println("Device Type Regex to Matched Alerts  = " + deviceTypeRegex);
+		String deviceType = extractDeviceType(recommendationConfig.getCehIssue().getDescription(),deviceTypeRegex).trim();
+		System.out.println("Alert Device Type Matched  = " + deviceType);
+		if(nwDeviceType.contains(deviceType)){
+			String label = "PingServer";
+			System.out.println(label);
+			recommendationConfig.setLabel(label);
+		}
+end
