@@ -20,6 +20,8 @@ export function Deployments() {
     ]).then(([c, deps]) => {
       setClient(c)
       setDeployments(deps)
+    }).catch(() => {
+      setError('Failed to load deployments')
     }).finally(() => setLoading(false))
   }, [clientId])
 
@@ -36,14 +38,18 @@ export function Deployments() {
   }
 
   async function handleDownload(dep: Deployment) {
-    const res = await exportDeployment(dep.id)
-    const blob = await res.blob()
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `deployment_${dep.version}.zip`
-    a.click()
-    URL.revokeObjectURL(url)
+    try {
+      const res = await exportDeployment(dep.id)
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `deployment_${dep.version}.zip`
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch {
+      setError('Failed to download deployment ZIP')
+    }
   }
 
   return (
