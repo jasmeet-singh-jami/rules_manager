@@ -16,15 +16,24 @@ export function RuleLibrary() {
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
-    Promise.all([getClients(), getRuleTypes()]).then(([c, rt]) => {
-      setClients(c)
-      setRuleTypes(rt.sort((a, b) => a.pipeline_stage - b.pipeline_stage))
-      if (c.length > 0) setSelectedClientId(c[0].id)
-    })
+    Promise.all([getClients(), getRuleTypes()])
+      .then(([c, rt]) => {
+        setClients(c)
+        setRuleTypes(rt.sort((a, b) => a.pipeline_stage - b.pipeline_stage))
+        if (c.length > 0) setSelectedClientId(c[0].id)
+      })
+      .catch(() => {
+        setClients([])
+        setRuleTypes([])
+      })
   }, [])
 
   useEffect(() => {
-    if (!selectedClientId || ruleTypes.length === 0) return
+    if (!selectedClientId || ruleTypes.length === 0) {
+      setLoading(false)
+      return
+    }
+    let cancelled = false
     setLoading(true)
     const rt = ruleTypes[activeTabIdx]
     getRules({
@@ -33,8 +42,10 @@ export function RuleLibrary() {
       tool: toolFilter || undefined,
       search: search || undefined,
     })
-      .then(setRules)
-      .finally(() => setLoading(false))
+      .then(data => { if (!cancelled) setRules(data) })
+      .catch(() => { if (!cancelled) setRules([]) })
+      .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
   }, [selectedClientId, activeTabIdx, toolFilter, search, ruleTypes])
 
   async function handleDelete(rule: Rule) {
