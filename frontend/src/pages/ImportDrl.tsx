@@ -68,7 +68,7 @@ export function ImportDrl() {
           <div className="form-row">
             <label htmlFor="imp-client">Client</label>
             <select id="imp-client" value={selectedClientId} onChange={e => setSelectedClientId(e.target.value)}>
-              {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              {clients.map(c => <option key={c.id} value={c.id}>{c.name} ({c.code})</option>)}
             </select>
           </div>
           <div className="form-row">

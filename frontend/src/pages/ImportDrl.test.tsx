@@ -43,7 +43,7 @@ describe('ImportDrl page', () => {
 
   it('shows preview table after file upload', async () => {
     render(<MemoryRouter><ImportDrl /></MemoryRouter>)
-    await waitFor(() => screen.getByText('Infosys'))
+    await waitFor(() => screen.getByText('Infosys (INFY)'))
 
     const file = new File(['package com.test;'], 'test.drl', { type: 'text/plain' })
     const input = document.querySelector('input[type="file"]') as HTMLInputElement
