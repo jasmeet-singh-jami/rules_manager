@@ -37,8 +37,8 @@ describe('RuleLibrary', () => {
 
   it('shows client selector dropdown', async () => {
     render(<MemoryRouter><RuleLibrary /></MemoryRouter>)
-    await waitFor(() => screen.getByText('Infosys'))
-    expect(screen.getByRole('combobox')).toBeInTheDocument()
+    await waitFor(() => screen.getByText('Infosys (INFY)'))
+    expect(screen.getByRole('combobox', { name: /client/i })).toBeInTheDocument()
   })
 
   it('shows rule type tabs after client selected', async () => {
@@ -50,6 +50,6 @@ describe('RuleLibrary', () => {
   it('shows rules in the table', async () => {
     render(<MemoryRouter><RuleLibrary /></MemoryRouter>)
     await waitFor(() => screen.getByText('AlertRule_1'))
-    expect(screen.getByText('LogicMonitor')).toBeInTheDocument()
+    expect(screen.getAllByText('LogicMonitor').length).toBeGreaterThan(0)
   })
 })

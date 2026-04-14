@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Client, Rule, RuleType, getRules, getClients, getRuleTypes, deleteRule } from '../api/client'
 import { RuleEditor } from '../components/RuleEditor/RuleEditor'
 
-const TOOLS = ['LogicMonitor', 'SCOM', 'Tivoli', 'Dynatrace', 'Solarwinds', 'Datadog']
+const TOOLS = ['Any', 'LogicMonitor', 'SCOM', 'Tivoli', 'Dynatrace', 'Solarwinds', 'Datadog']
 
 export function RuleLibrary() {
   const [clients, setClients] = useState<Client[]>([])
@@ -18,7 +18,7 @@ export function RuleLibrary() {
   useEffect(() => {
     Promise.all([getClients(), getRuleTypes()]).then(([c, rt]) => {
       setClients(c)
-      setRuleTypes(rt)
+      setRuleTypes(rt.sort((a, b) => a.pipeline_stage - b.pipeline_stage))
       if (c.length > 0) setSelectedClientId(c[0].id)
     })
   }, [])
@@ -71,13 +71,14 @@ export function RuleLibrary() {
       {/* Client selector */}
       <div style={{ marginBottom: 14 }}>
         <select
+          aria-label="Client"
           value={selectedClientId}
           onChange={e => { setSelectedClientId(e.target.value); setActiveTabIdx(0) }}
           style={{ width: 260 }}
         >
           {clients.length === 0 && <option value="">Loading clients…</option>}
           {clients.map(c => (
-            <option key={c.id} value={c.id}>{c.name}</option>
+            <option key={c.id} value={c.id}>{c.name} ({c.code})</option>
           ))}
         </select>
       </div>
@@ -110,14 +111,9 @@ export function RuleLibrary() {
           onChange={e => setSearch(e.target.value)}
           style={{ width: 220 }}
         />
-        <select
-          value={toolFilter}
-          onChange={e => setToolFilter(e.target.value)}
-          style={{ width: 160 }}
-          role="listbox"
-        >
-          <option value="">All tools</option>
-          {TOOLS.map(t => <option key={t} value={t} aria-label={t} />)}
+        <select aria-label="Tool filter" value={toolFilter} onChange={e => setToolFilter(e.target.value)} style={{ width: 160 }}>
+          <option value="">Any</option>
+          {TOOLS.filter(t => t !== 'Any').map(t => <option key={t} value={t}>{t}</option>)}
         </select>
       </div>
 
