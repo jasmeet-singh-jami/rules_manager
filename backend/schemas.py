@@ -142,3 +142,43 @@ class ImportConfirmRule(BaseModel):
 
 class ImportConfirmRequest(BaseModel):
     rules: list[ImportConfirmRule]
+
+
+# ── Auth ──────────────────────────────────────────────────────────────────────
+
+class UserCreate(BaseModel):
+    username: str
+    password: str
+
+
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
+
+class UserOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    username: str
+    role: str
+
+
+class TokenOut(BaseModel):
+    token: str
+    user: UserOut
+    client_access_ids: list[UUID]
+
+
+class MeOut(BaseModel):
+    id: UUID
+    username: str
+    role: str
+    client_access_ids: list[UUID]
+
+
+class UserWithClientsOut(BaseModel):
+    id: UUID
+    username: str
+    role: str
+    client_ids: list[UUID]
