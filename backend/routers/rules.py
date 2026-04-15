@@ -5,8 +5,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_
 
 from database import get_db
-from models import Rule, Client, RuleType
+from models import Rule, Client, RuleType, User
 from schemas import RuleCreate, RuleUpdate, RuleOut, RuleCopyRequest
+from auth_deps import get_current_user, check_client_access
 
 router = APIRouter(tags=["rules"])
 
@@ -17,6 +18,7 @@ async def list_rules(
     rule_type: Optional[str] = Query(None),
     tool: Optional[str] = Query(None),
     search: Optional[str] = Query(None),
+    _: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     stmt = select(Rule)
@@ -40,7 +42,12 @@ async def list_rules(
 
 
 @router.post("/rules", response_model=RuleOut, status_code=status.HTTP_201_CREATED)
-async def create_rule(body: RuleCreate, db: AsyncSession = Depends(get_db)):
+async def create_rule(
+    body: RuleCreate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    await check_client_access(current_user, body.client_id, db)
     rule = Rule(**body.model_dump())
     db.add(rule)
     await db.commit()
@@ -49,7 +56,11 @@ async def create_rule(body: RuleCreate, db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/rules/{rule_id}", response_model=RuleOut)
-async def get_rule(rule_id: UUID, db: AsyncSession = Depends(get_db)):
+async def get_rule(
+    rule_id: UUID,
+    _: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
     result = await db.execute(select(Rule).where(Rule.id == rule_id))
     rule = result.scalar_one_or_none()
     if not rule:
@@ -58,11 +69,17 @@ async def get_rule(rule_id: UUID, db: AsyncSession = Depends(get_db)):
 
 
 @router.put("/rules/{rule_id}", response_model=RuleOut)
-async def update_rule(rule_id: UUID, body: RuleUpdate, db: AsyncSession = Depends(get_db)):
+async def update_rule(
+    rule_id: UUID,
+    body: RuleUpdate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
     result = await db.execute(select(Rule).where(Rule.id == rule_id))
     rule = result.scalar_one_or_none()
     if not rule:
         raise HTTPException(status_code=404, detail="Rule not found")
+    await check_client_access(current_user, rule.client_id, db)
     for field, value in body.model_dump(exclude_none=True).items():
         setattr(rule, field, value)
     await db.commit()
@@ -71,27 +88,35 @@ async def update_rule(rule_id: UUID, body: RuleUpdate, db: AsyncSession = Depend
 
 
 @router.delete("/rules/{rule_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_rule(rule_id: UUID, db: AsyncSession = Depends(get_db)):
+async def delete_rule(
+    rule_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
     result = await db.execute(select(Rule).where(Rule.id == rule_id))
     rule = result.scalar_one_or_none()
     if not rule:
         raise HTTPException(status_code=404, detail="Rule not found")
+    await check_client_access(current_user, rule.client_id, db)
     await db.delete(rule)
     await db.commit()
 
 
 @router.post("/rules/{rule_id}/copy", response_model=RuleOut, status_code=status.HTTP_201_CREATED)
-async def copy_rule(rule_id: UUID, body: RuleCopyRequest, db: AsyncSession = Depends(get_db)):
+async def copy_rule(
+    rule_id: UUID,
+    body: RuleCopyRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
     result = await db.execute(select(Rule).where(Rule.id == rule_id))
     original = result.scalar_one_or_none()
     if not original:
         raise HTTPException(status_code=404, detail="Rule not found")
-
-    # Verify target client exists
     client_result = await db.execute(select(Client).where(Client.id == body.target_client_id))
     if not client_result.scalar_one_or_none():
         raise HTTPException(status_code=404, detail="Target client not found")
-
+    await check_client_access(current_user, body.target_client_id, db)
     copy = Rule(
         client_id=body.target_client_id,
         rule_type_id=original.rule_type_id,
