@@ -77,7 +77,19 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   if (init.body && typeof init.body === 'string') {
     headers['Content-Type'] = 'application/json'
   }
-  const res = await fetch(`${BASE}${path}`, { ...init, headers: { ...headers, ...init.headers as Record<string, string> } })
+  const token = localStorage.getItem('auth_token')
+  if (token) headers['Authorization'] = `Bearer ${token}`
+  const res = await fetch(`${BASE}${path}`, {
+    ...init,
+    headers: { ...headers, ...init.headers as Record<string, string> },
+  })
+  if (res.status === 401) {
+    localStorage.removeItem('auth_token')
+    localStorage.removeItem('auth_user')
+    localStorage.removeItem('auth_client_access')
+    window.location.href = '/login'
+    throw new Error('Unauthorized')
+  }
   if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`)
   if (res.status === 204) return undefined as T
   return res.json() as Promise<T>
@@ -141,15 +153,29 @@ export const getDeployments = (client_id: string) =>
 export const createDeployment = (body: { client_id: string; version: string; notes?: string }) =>
   request<Deployment>('/deployments', { method: 'POST', body: JSON.stringify(body) })
 
-export const exportDeployment = (id: string): Promise<Response> =>
-  fetch(`${BASE}/deployments/${id}/export`)
+export const exportDeployment = (id: string): Promise<Response> => {
+  const token = localStorage.getItem('auth_token')
+  const headers: Record<string, string> = {}
+  if (token) headers['Authorization'] = `Bearer ${token}`
+  return fetch(`${BASE}/deployments/${id}/export`, { headers })
+}
 
 // ── Import ────────────────────────────────────────────────────────────────
 
 export const parseDrlFile = async (file: File): Promise<ParsedFilePreview> => {
   const form = new FormData()
   form.append('file', file)
-  const res = await fetch(`${BASE}/import/parse`, { method: 'POST', body: form })
+  const token = localStorage.getItem('auth_token')
+  const headers: Record<string, string> = {}
+  if (token) headers['Authorization'] = `Bearer ${token}`
+  const res = await fetch(`${BASE}/import/parse`, { method: 'POST', body: form, headers })
+  if (res.status === 401) {
+    localStorage.removeItem('auth_token')
+    localStorage.removeItem('auth_user')
+    localStorage.removeItem('auth_client_access')
+    window.location.href = '/login'
+    throw new Error('Unauthorized')
+  }
   if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`)
   return res.json() as Promise<ParsedFilePreview>
 }
