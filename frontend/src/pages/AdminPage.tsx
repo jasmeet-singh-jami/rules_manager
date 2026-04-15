@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { getClients, Client } from '../api/client'
+import { useAuth } from '../context/AuthContext'
 
 interface UserWithClients {
   id: string
@@ -17,21 +18,24 @@ async function listUsers(token: string): Promise<UserWithClients[]> {
 }
 
 async function grantAccess(userId: string, clientId: string, token: string): Promise<void> {
-  await fetch(`/api/admin/users/${userId}/clients/${clientId}`, {
+  const res = await fetch(`/api/admin/users/${userId}/clients/${clientId}`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}` },
   })
+  if (!res.ok) throw new Error('Failed to grant access')
 }
 
 async function revokeAccess(userId: string, clientId: string, token: string): Promise<void> {
-  await fetch(`/api/admin/users/${userId}/clients/${clientId}`, {
+  const res = await fetch(`/api/admin/users/${userId}/clients/${clientId}`, {
     method: 'DELETE',
     headers: { Authorization: `Bearer ${token}` },
   })
+  if (!res.ok) throw new Error('Failed to revoke access')
 }
 
 export function AdminPage() {
-  const token = localStorage.getItem('auth_token') ?? ''
+  const { token: authToken } = useAuth()
+  const token = authToken ?? ''
   const [users, setUsers] = useState<UserWithClients[]>([])
   const [clients, setClients] = useState<Client[]>([])
   const [error, setError] = useState('')
@@ -42,27 +46,35 @@ export function AdminPage() {
       .then(([u, c]) => { setUsers(u); setClients(c) })
       .catch(() => setError('Failed to load data'))
       .finally(() => setLoading(false))
-  }, [token])
+  }, [])
 
   async function handleGrant(userId: string, clientId: string) {
-    await grantAccess(userId, clientId, token)
-    setUsers(prev => prev.map(u =>
-      u.id === userId && !u.client_ids.includes(clientId)
-        ? { ...u, client_ids: [...u.client_ids, clientId] }
-        : u
-    ))
+    try {
+      await grantAccess(userId, clientId, token)
+      setUsers(prev => prev.map(u =>
+        u.id === userId && !u.client_ids.includes(clientId)
+          ? { ...u, client_ids: [...u.client_ids, clientId] }
+          : u
+      ))
+    } catch {
+      setError('Failed to grant access')
+    }
   }
 
   async function handleRevoke(userId: string, clientId: string) {
-    await revokeAccess(userId, clientId, token)
-    setUsers(prev => prev.map(u =>
-      u.id === userId
-        ? { ...u, client_ids: u.client_ids.filter(id => id !== clientId) }
-        : u
-    ))
+    try {
+      await revokeAccess(userId, clientId, token)
+      setUsers(prev => prev.map(u =>
+        u.id === userId
+          ? { ...u, client_ids: u.client_ids.filter(id => id !== clientId) }
+          : u
+      ))
+    } catch {
+      setError('Failed to revoke access')
+    }
   }
 
-  if (loading) return <p className="muted" style={{ margin: '24px 0' }}>Loading\u2026</p>
+  if (loading) return <p className="muted" style={{ margin: '24px 0' }}>Loading…</p>
   if (error) return <p className="error-msg" style={{ margin: '24px 0' }}>{error}</p>
 
   const clientMap = Object.fromEntries(clients.map(c => [c.id, c]))
@@ -98,7 +110,7 @@ export function AdminPage() {
                           onClick={() => handleRevoke(u.id, cid)}
                           style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#c00', padding: 0, fontSize: 14, lineHeight: 1 }}
                           title="Revoke access"
-                        >\u00d7</button>
+                        >×</button>
                       </span>
                     ))}
                   </div>
@@ -111,11 +123,11 @@ export function AdminPage() {
                     }}
                     style={{ fontSize: 12, padding: '3px 6px' }}
                   >
-                    <option value="">Add client\u2026</option>
+                    <option value="">Add client…</option>
                     {clients
                       .filter(c => !u.client_ids.includes(c.id))
                       .map(c => (
-                        <option key={c.id} value={c.id}>{c.code} \u2014 {c.name}</option>
+                        <option key={c.id} value={c.id}>{c.code} — {c.name}</option>
                       ))}
                   </select>
                 </td>
