@@ -4,9 +4,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from database import get_db
-from models import Deployment, DeploymentRuleSnapshot, Rule, RuleType, Client
+from models import Deployment, DeploymentRuleSnapshot, Rule, RuleType, Client, User
 from schemas import DeploymentCreate, DeploymentOut
 from services.drl_generator import generate_drl_bundle
+from auth_deps import get_current_user, check_client_access
 
 router = APIRouter(tags=["deployments"])
 
@@ -41,7 +42,11 @@ def _rt_to_dict(rt: RuleType) -> dict:
 
 
 @router.get("/clients/{client_id}/deployments", response_model=list[DeploymentOut])
-async def list_deployments(client_id: UUID, db: AsyncSession = Depends(get_db)):
+async def list_deployments(
+    client_id: UUID,
+    _: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
     result = await db.execute(
         select(Deployment)
         .where(Deployment.client_id == client_id)
@@ -51,8 +56,12 @@ async def list_deployments(client_id: UUID, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/deployments", response_model=DeploymentOut, status_code=status.HTTP_201_CREATED)
-async def create_deployment(body: DeploymentCreate, db: AsyncSession = Depends(get_db)):
-    # Verify client exists
+async def create_deployment(
+    body: DeploymentCreate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    await check_client_access(current_user, body.client_id, db)
     client_result = await db.execute(select(Client).where(Client.id == body.client_id))
     if not client_result.scalar_one_or_none():
         raise HTTPException(status_code=404, detail="Client not found")
@@ -66,10 +75,8 @@ async def create_deployment(body: DeploymentCreate, db: AsyncSession = Depends(g
     db.add(deployment)
     await db.flush()
 
-    # Snapshot all enabled rules for this client
     rules_result = await db.execute(
-        select(Rule)
-        .where(Rule.client_id == body.client_id, Rule.enabled == True)
+        select(Rule).where(Rule.client_id == body.client_id, Rule.enabled == True)
     )
     enabled_rules = rules_result.scalars().all()
 
@@ -96,7 +103,11 @@ async def create_deployment(body: DeploymentCreate, db: AsyncSession = Depends(g
 
 
 @router.get("/deployments/{deployment_id}", response_model=DeploymentOut)
-async def get_deployment(deployment_id: UUID, db: AsyncSession = Depends(get_db)):
+async def get_deployment(
+    deployment_id: UUID,
+    _: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
     result = await db.execute(select(Deployment).where(Deployment.id == deployment_id))
     dep = result.scalar_one_or_none()
     if not dep:
@@ -105,20 +116,22 @@ async def get_deployment(deployment_id: UUID, db: AsyncSession = Depends(get_db)
 
 
 @router.get("/deployments/{deployment_id}/export")
-async def export_deployment(deployment_id: UUID, db: AsyncSession = Depends(get_db)):
+async def export_deployment(
+    deployment_id: UUID,
+    _: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
     dep_result = await db.execute(select(Deployment).where(Deployment.id == deployment_id))
     dep = dep_result.scalar_one_or_none()
     if not dep:
         raise HTTPException(status_code=404, detail="Deployment not found")
 
-    # Load all snapshots for this deployment
     snap_result = await db.execute(
         select(DeploymentRuleSnapshot)
         .where(DeploymentRuleSnapshot.deployment_id == deployment_id)
     )
     snapshots = snap_result.scalars().all()
 
-    # Group rules by rule_type, loading RuleType data
     rt_rules: dict[str, tuple[dict, list[dict]]] = {}
 
     for snap in snapshots:
@@ -145,7 +158,6 @@ async def export_deployment(deployment_id: UUID, db: AsyncSession = Depends(get_
                 "action_raw": rule_dict.get("action_raw") or "",
             })
 
-    # Ensure all rule types appear in the ZIP (even if no rules for that type)
     all_rt_result = await db.execute(select(RuleType).order_by(RuleType.pipeline_stage))
     all_rts = all_rt_result.scalars().all()
     for rt_obj in all_rts:
@@ -153,7 +165,6 @@ async def export_deployment(deployment_id: UUID, db: AsyncSession = Depends(get_
         if rt_id not in rt_rules:
             rt_rules[rt_id] = (_rt_to_dict(rt_obj), [])
 
-    # Sort by pipeline_stage for deterministic ZIP ordering
     sorted_pairs = sorted(
         [(rt_dict, rules) for rt_dict, rules in rt_rules.values()],
         key=lambda x: x[0]["pipeline_stage"],
