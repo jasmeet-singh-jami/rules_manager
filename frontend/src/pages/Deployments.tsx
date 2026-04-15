@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { Client, Deployment, getClients, getDeployments, createDeployment, exportDeployment } from '../api/client'
+import { useAuth } from '../context/AuthContext'
 
 export function Deployments() {
+  const { hasEditAccess } = useAuth()
   const { id: clientId } = useParams<{ id: string }>()
   const [client, setClient] = useState<Client | null>(null)
   const [deployments, setDeployments] = useState<Deployment[]>([])
@@ -61,7 +63,9 @@ export function Deployments() {
             Deployments {client ? `— ${client.name}` : ''}
           </h2>
         </div>
-        <button className="btn-primary" onClick={() => setShowForm(true)}>+ New Deployment</button>
+        {hasEditAccess(clientId ?? '') && (
+          <button className="btn-primary" onClick={() => setShowForm(true)}>+ New Deployment</button>
+        )}
       </div>
 
       {showForm && (

@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Client, getClients, createClient, updateClient, deleteClient } from '../api/client'
+import { useAuth } from '../context/AuthContext'
 
 interface FormState { code: string; name: string; description: string }
 const empty: FormState = { code: '', name: '', description: '' }
 
 export function Clients() {
+  const { hasEditAccess } = useAuth()
   const [clients, setClients] = useState<Client[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -77,8 +79,12 @@ export function Clients() {
                     <Link to={`/clients/${c.id}/deployments`}>
                       <button className="btn-outline btn-sm">Deployments</button>
                     </Link>
-                    <button className="btn-outline btn-sm" onClick={() => openEdit(c)}>Edit</button>
-                    <button className="btn-danger btn-sm" onClick={() => handleDelete(c)}>Delete</button>
+                    {hasEditAccess(c.id) && (
+                      <button className="btn-outline btn-sm" onClick={() => openEdit(c)}>Edit</button>
+                    )}
+                    {hasEditAccess(c.id) && (
+                      <button className="btn-danger btn-sm" onClick={() => handleDelete(c)}>Delete</button>
+                    )}
                   </span>
                 </td>
               </tr>

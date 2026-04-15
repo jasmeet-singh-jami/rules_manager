@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
 import { Client, Rule, RuleType, getRules, getClients, getRuleTypes, deleteRule } from '../api/client'
 import { RuleEditor } from '../components/RuleEditor/RuleEditor'
+import { useAuth } from '../context/AuthContext'
 
 const TOOLS = ['Any', 'LogicMonitor', 'SCOM', 'Tivoli', 'Dynatrace', 'Solarwinds', 'Datadog']
 
 export function RuleLibrary() {
+  const { hasEditAccess } = useAuth()
   const [clients, setClients] = useState<Client[]>([])
   const [ruleTypes, setRuleTypes] = useState<RuleType[]>([])
   const [rules, setRules] = useState<Rule[]>([])
@@ -70,13 +72,9 @@ export function RuleLibrary() {
       {/* Header bar */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '20px 0 16px' }}>
         <h2 style={{ margin: 0 }}>Rule Library</h2>
-        <button
-          className="btn-primary"
-          disabled={!selectedClientId}
-          onClick={() => setEditingRule('new')}
-        >
-          + Add Rule
-        </button>
+        {selectedClientId && hasEditAccess(selectedClientId) && (
+          <button className="btn-primary" onClick={() => setEditingRule('new')}>+ New Rule</button>
+        )}
       </div>
 
       {/* Client selector */}
@@ -154,8 +152,12 @@ export function RuleLibrary() {
                 </td>
                 <td>
                   <span style={{ display: 'flex', gap: 6 }}>
-                    <button className="btn-outline btn-sm" onClick={() => setEditingRule(rule)}>Edit</button>
-                    <button className="btn-danger btn-sm" onClick={() => handleDelete(rule)}>Delete</button>
+                    {hasEditAccess(rule.client_id) && (
+                      <button className="btn-outline btn-sm" onClick={() => setEditingRule(rule)}>Edit</button>
+                    )}
+                    {hasEditAccess(rule.client_id) && (
+                      <button className="btn-danger btn-sm" onClick={() => handleDelete(rule)}>Delete</button>
+                    )}
                   </span>
                 </td>
               </tr>

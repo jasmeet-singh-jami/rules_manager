@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { Client, RuleType, ParsedFilePreview, getClients, getRuleTypes, parseDrlFile, confirmImport } from '../api/client'
+import { useAuth } from '../context/AuthContext'
 
 export function ImportDrl() {
+  const { hasEditAccess } = useAuth()
   const [clients, setClients] = useState<Client[]>([])
   const [ruleTypes, setRuleTypes] = useState<RuleType[]>([])
   const [preview, setPreview] = useState<ParsedFilePreview | null>(null)
@@ -123,7 +125,8 @@ export function ImportDrl() {
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
               <button className="btn-outline btn-sm" onClick={() => setPreview(null)}>Clear</button>
-              <button className="btn-primary btn-sm" onClick={handleConfirm} disabled={loading}>
+              {!hasEditAccess(selectedClientId) && <p className="error-msg">You do not have edit access to this client.</p>}
+              <button className="btn-primary btn-sm" onClick={handleConfirm} disabled={loading || !hasEditAccess(selectedClientId)}>
                 Confirm Import
               </button>
             </div>
