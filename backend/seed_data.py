@@ -1,6 +1,9 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from models import RuleType
+from models import RuleType, User
+from passlib.context import CryptContext
+
+_pwd_ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 RULE_TYPES = [
     {
@@ -179,3 +182,14 @@ async def seed_rule_types(session: AsyncSession) -> None:
     for rt_data in RULE_TYPES:
         if rt_data["slug"] not in existing_slugs:
             session.add(RuleType(**rt_data))
+
+
+async def seed_admin_user(session: AsyncSession) -> None:
+    """Insert admin user with role='admin' if not already present."""
+    result = await session.execute(select(User).where(User.username == "admin"))
+    if result.scalar_one_or_none() is None:
+        session.add(User(
+            username="admin",
+            password_hash=_pwd_ctx.hash("admin"),
+            role="admin",
+        ))

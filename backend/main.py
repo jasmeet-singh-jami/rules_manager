@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from database import engine, Base
-from seed_data import seed_rule_types
+from seed_data import seed_rule_types, seed_admin_user
 from database import AsyncSessionLocal
 from routers import clients, rule_types, rules, deployments, import_drl, auth
 
@@ -16,6 +16,7 @@ async def lifespan(app: FastAPI):
         await conn.run_sync(Base.metadata.create_all)
     async with AsyncSessionLocal() as session:
         await seed_rule_types(session)
+        await seed_admin_user(session)
         await session.commit()
     yield
 

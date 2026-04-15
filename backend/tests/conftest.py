@@ -9,11 +9,11 @@ TEST_DB_URL = os.getenv(
     "postgresql+asyncpg://postgres:postgres@localhost/test_polycloud_rm",
 )
 
+# Tables that survive clean_tables (seeded reference data)
+PRESERVED_TABLES = {"rule_types", "users", "tokens"}
+
 
 def pytest_collection_modifyitems(items):
-    """Force all async tests into session loop scope so they share the session-scoped engine.
-    asyncpg connections are loop-bound; without this, function-scoped test loops conflict
-    with the session-scoped seeded_engine fixture on Python 3.10 / pytest-asyncio 0.24."""
     for item in items:
         if item.get_closest_marker("asyncio") is not None:
             item.add_marker(pytest.mark.asyncio(loop_scope="session"), append=False)
@@ -22,7 +22,7 @@ def pytest_collection_modifyitems(items):
 @pytest_asyncio.fixture(scope="session", loop_scope="session")
 async def seeded_engine():
     from database import Base
-    from seed_data import seed_rule_types
+    from seed_data import seed_rule_types, seed_admin_user
 
     eng = create_async_engine(TEST_DB_URL, echo=False)
     async with eng.begin() as conn:
@@ -32,6 +32,7 @@ async def seeded_engine():
     factory = async_sessionmaker(eng, expire_on_commit=False, class_=AsyncSession)
     async with factory() as session:
         await seed_rule_types(session)
+        await seed_admin_user(session)
         await session.commit()
 
     yield eng
@@ -40,14 +41,14 @@ async def seeded_engine():
 
 @pytest_asyncio.fixture(autouse=True, loop_scope="session")
 async def clean_tables(seeded_engine):
-    """Delete all data except rule_types between tests."""
+    """Delete all data except rule_types, users, and tokens between tests."""
     from database import Base
 
     yield
 
     async with seeded_engine.begin() as conn:
         for table in reversed(Base.metadata.sorted_tables):
-            if table.name != "rule_types":
+            if table.name not in PRESERVED_TABLES:
                 await conn.execute(table.delete())
 
 
@@ -72,3 +73,14 @@ async def client(db, seeded_engine):
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
         yield c
     app.dependency_overrides.clear()
+
+
+@pytest_asyncio.fixture(loop_scope="session")
+async def authed_client(client):
+    """AsyncClient pre-authenticated as admin. Use this in all tests that hit protected routes."""
+    res = await client.post("/api/auth/login", json={"username": "admin", "password": "admin"})
+    assert res.status_code == 200, f"Admin login failed: {res.text}"
+    token = res.json()["token"]
+    client.headers.update({"Authorization": f"Bearer {token}"})
+    yield client
+    client.headers.pop("Authorization", None)
