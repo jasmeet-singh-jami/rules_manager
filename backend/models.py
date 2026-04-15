@@ -1,8 +1,9 @@
 import uuid
+import secrets
 from datetime import datetime, timezone
 from sqlalchemy import (
     Column, String, Text, Boolean, Integer, ForeignKey,
-    TIMESTAMP, Enum as SAEnum
+    TIMESTAMP, Enum as SAEnum, UniqueConstraint
 )
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import relationship
@@ -92,3 +93,43 @@ class DeploymentRuleSnapshot(Base):
 
     deployment = relationship("Deployment", back_populates="snapshots")
     rule = relationship("Rule", back_populates="snapshots")
+
+
+UserRole = SAEnum("admin", "contributor", name="user_role")
+
+
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    username = Column(String(50), unique=True, nullable=False)
+    password_hash = Column(Text, nullable=False)
+    role = Column(UserRole, nullable=False, default="contributor")
+    created_at = Column(TIMESTAMP(timezone=True), default=utcnow, nullable=False)
+
+    tokens = relationship("Token", back_populates="user", cascade="all, delete-orphan")
+    client_access = relationship("UserClientAccess", back_populates="user", cascade="all, delete-orphan")
+
+
+class Token(Base):
+    __tablename__ = "tokens"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    token = Column(Text, unique=True, nullable=False, default=lambda: secrets.token_hex(32))
+    created_at = Column(TIMESTAMP(timezone=True), default=utcnow, nullable=False)
+
+    user = relationship("User", back_populates="tokens")
+
+
+class UserClientAccess(Base):
+    __tablename__ = "user_client_access"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    client_id = Column(UUID(as_uuid=True), ForeignKey("clients.id", ondelete="CASCADE"), nullable=False)
+
+    user = relationship("User", back_populates="client_access")
+    client = relationship("Client")
+
+    __table_args__ = (UniqueConstraint("user_id", "client_id", name="uq_user_client"),)
