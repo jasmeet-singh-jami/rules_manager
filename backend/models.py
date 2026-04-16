@@ -1,9 +1,9 @@
 import uuid
 import secrets
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from sqlalchemy import (
     Column, String, Text, Boolean, Integer, ForeignKey,
-    TIMESTAMP, Enum as SAEnum, UniqueConstraint
+    TIMESTAMP, Enum as SAEnum, UniqueConstraint, text
 )
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import relationship
@@ -106,6 +106,7 @@ class User(Base):
     password_hash = Column(Text, nullable=False)
     role = Column(UserRole, nullable=False, default="contributor")
     created_at = Column(TIMESTAMP(timezone=True), default=utcnow, nullable=False)
+    must_change_password = Column(Boolean, nullable=False, default=False, server_default="false")
 
     tokens = relationship("Token", back_populates="user", cascade="all, delete-orphan")
     client_access = relationship("UserClientAccess", back_populates="user", cascade="all, delete-orphan")
@@ -118,6 +119,12 @@ class Token(Base):
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     token = Column(Text, unique=True, nullable=False, default=lambda: secrets.token_hex(32))
     created_at = Column(TIMESTAMP(timezone=True), default=utcnow, nullable=False)
+    expires_at = Column(
+        TIMESTAMP(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc) + timedelta(hours=24),
+        server_default=text("NOW() + INTERVAL '24 hours'"),
+    )
 
     user = relationship("User", back_populates="tokens")
 
