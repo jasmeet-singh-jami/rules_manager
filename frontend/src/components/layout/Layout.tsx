@@ -15,58 +15,27 @@ export function Layout({ children }: Props) {
     navigate('/login')
   }
 
-  const navLink = (to: string, label: string) => (
-    <Link
-      to={to}
-      style={{
-        color: '#fff',
-        textDecoration: 'none',
-        padding: '6px 14px',
-        borderRadius: 7,
-        fontWeight: 600,
-        fontSize: 13,
-        background: pathname === to ? 'rgba(255,255,255,0.18)' : 'transparent',
-      }}
-    >
-      {label}
-    </Link>
-  )
+  const isActive = (path: string) =>
+    path === '/' ? pathname === '/' : pathname.startsWith(path)
 
   return (
     <>
-      <header style={{
-        background: 'linear-gradient(135deg, #0c3a70, #0f6fb3)',
-        color: '#fff',
-        padding: '14px 24px',
-        display: 'flex',
-        alignItems: 'center',
-        gap: 32,
-      }}>
-        <h1 style={{ margin: 0, fontSize: '1.15rem', whiteSpace: 'nowrap' }}>
-          Polycloud Rules Manager
-        </h1>
-        <nav style={{ display: 'flex', gap: 4, flex: 1 }}>
-          {navLink('/', 'Rule Library')}
-          {navLink('/clients', 'Clients')}
-          {navLink('/import', 'Import DRL')}
-          {isAdmin && navLink('/admin', 'Admin')}
+      <header className="app-header">
+        <span className="app-logo">
+          <span className="app-logo-icon">⚡</span>
+          <span className="app-logo-text">Rules Manager</span>
+        </span>
+        <nav className="app-nav">
+          <Link to="/"        className={`nav-link${isActive('/')        ? ' active' : ''}`}>Rule Library</Link>
+          <Link to="/clients" className={`nav-link${isActive('/clients') ? ' active' : ''}`}>Clients</Link>
+          <Link to="/import"  className={`nav-link${isActive('/import')  ? ' active' : ''}`}>Import DRL</Link>
+          {isAdmin && (
+            <Link to="/admin" className={`nav-link${isActive('/admin')   ? ' active' : ''}`}>Admin</Link>
+          )}
         </nav>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 13 }}>
-          <span style={{ color: 'rgba(255,255,255,0.85)' }}>{user?.username}</span>
-          <button
-            onClick={handleLogout}
-            style={{
-              background: 'rgba(255,255,255,0.15)',
-              border: '1px solid rgba(255,255,255,0.3)',
-              color: '#fff',
-              borderRadius: 6,
-              padding: '4px 12px',
-              cursor: 'pointer',
-              fontSize: 12,
-            }}
-          >
-            Sign out
-          </button>
+        <div className="app-header-user">
+          <Link to="/account" className="username-chip" style={{ textDecoration: 'none' }}>{user?.username}</Link>
+          <button className="btn-signout" onClick={handleLogout}>Sign out</button>
         </div>
       </header>
       <main className="page-wrap">{children}</main>

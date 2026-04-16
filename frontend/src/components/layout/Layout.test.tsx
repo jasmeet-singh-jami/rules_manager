@@ -1,22 +1,27 @@
 import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
+import { AuthProvider } from '../../context/AuthContext'
 import { Layout } from './Layout'
 
 describe('Layout', () => {
   it('renders the app title', () => {
     render(
-      <MemoryRouter>
-        <Layout><div>content</div></Layout>
-      </MemoryRouter>
+      <AuthProvider>
+        <MemoryRouter>
+          <Layout><div>content</div></Layout>
+        </MemoryRouter>
+      </AuthProvider>
     )
-    expect(screen.getByText('Polycloud Rules Manager')).toBeInTheDocument()
+    expect(screen.getByText('Rules Manager')).toBeInTheDocument()
   })
 
   it('renders nav links', () => {
     render(
-      <MemoryRouter>
-        <Layout><div /></Layout>
-      </MemoryRouter>
+      <AuthProvider>
+        <MemoryRouter>
+          <Layout><div /></Layout>
+        </MemoryRouter>
+      </AuthProvider>
     )
     expect(screen.getByRole('link', { name: /rule library/i })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /clients/i })).toBeInTheDocument()
@@ -25,9 +30,11 @@ describe('Layout', () => {
 
   it('renders children', () => {
     render(
-      <MemoryRouter>
-        <Layout><p>hello world</p></Layout>
-      </MemoryRouter>
+      <AuthProvider>
+        <MemoryRouter>
+          <Layout><p>hello world</p></Layout>
+        </MemoryRouter>
+      </AuthProvider>
     )
     expect(screen.getByText('hello world')).toBeInTheDocument()
   })
