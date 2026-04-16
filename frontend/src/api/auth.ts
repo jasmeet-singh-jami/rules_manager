@@ -46,3 +46,9 @@ export const logout = () =>
 
 export const getMe = () =>
   authRequest<MeResponse>('/me')
+
+export const changePassword = (newPassword: string, confirmPassword: string) =>
+  authRequest<void>('/me/password', {
+    method: 'PATCH',
+    body: JSON.stringify({ new_password: newPassword, confirm_password: confirmPassword }),
+  })
