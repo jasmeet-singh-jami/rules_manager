@@ -17,7 +17,7 @@ export function LoginPage() {
     setLoading(true)
     try {
       const res = await apiLogin(username, password)
-      login(res.token, res.user, res.client_access_ids)
+      login(res.token, res.user, res.client_access_ids, res.must_change_password)
       navigate('/')
     } catch {
       setError('Invalid username or password')

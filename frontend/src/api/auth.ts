@@ -10,6 +10,7 @@ export interface TokenResponse {
   token: string
   user: AuthUser
   client_access_ids: string[]
+  must_change_password: boolean
 }
 
 export interface MeResponse {
@@ -17,6 +18,7 @@ export interface MeResponse {
   username: string
   role: 'admin' | 'contributor'
   client_access_ids: string[]
+  must_change_password: boolean
 }
 
 async function authRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
@@ -47,8 +49,12 @@ export const logout = () =>
 export const getMe = () =>
   authRequest<MeResponse>('/me')
 
-export const changePassword = (newPassword: string, confirmPassword: string) =>
+export const changePassword = (currentPassword: string, newPassword: string, confirmPassword: string) =>
   authRequest<void>('/me/password', {
     method: 'PATCH',
-    body: JSON.stringify({ new_password: newPassword, confirm_password: confirmPassword }),
+    body: JSON.stringify({
+      current_password: currentPassword,
+      new_password: newPassword,
+      confirm_password: confirmPassword,
+    }),
   })

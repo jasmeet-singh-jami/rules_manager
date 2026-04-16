@@ -1,3 +1,4 @@
+from datetime import datetime, timezone, timedelta
 from uuid import UUID
 from fastapi import Depends, HTTPException, Header
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -5,6 +6,8 @@ from sqlalchemy import select
 
 from database import get_db
 from models import User, Token, UserClientAccess
+
+TOKEN_TTL_HOURS = 24
 
 
 async def get_current_user(
@@ -18,6 +21,12 @@ async def get_current_user(
     token = result.scalar_one_or_none()
     if not token:
         raise HTTPException(status_code=401, detail="Invalid or expired token")
+    if token.expires_at < datetime.now(timezone.utc):
+        await db.delete(token)
+        await db.commit()
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+    token.expires_at = datetime.now(timezone.utc) + timedelta(hours=TOKEN_TTL_HOURS)
+    await db.commit()
     user_result = await db.execute(select(User).where(User.id == token.user_id))
     user = user_result.scalar_one_or_none()
     if not user:

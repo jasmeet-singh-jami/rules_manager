@@ -17,7 +17,7 @@ export function RegisterPage() {
     setLoading(true)
     try {
       const res = await apiRegister(username, password)
-      login(res.token, res.user, res.client_access_ids)
+      login(res.token, res.user, res.client_access_ids, res.must_change_password)
       navigate('/')
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : ''

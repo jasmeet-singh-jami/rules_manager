@@ -26,6 +26,7 @@ async def _build_token_out(user: User, db: AsyncSession) -> TokenOut:
         token=token.token,
         user=user,
         client_access_ids=client_access_ids,
+        must_change_password=user.must_change_password,
     )
 
 
@@ -83,18 +84,29 @@ async def me(
         username=current_user.username,
         role=current_user.role,
         client_access_ids=client_access_ids,
+        must_change_password=current_user.must_change_password,
     )
 
 
 @router.patch("/me/password", status_code=status.HTTP_204_NO_CONTENT)
 async def change_password(
     body: ChangePasswordRequest,
+    authorization: str = Header(None),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    if not verify_password(body.current_password, current_user.password_hash):
+        raise HTTPException(status_code=400, detail="Current password is incorrect")
     if body.new_password != body.confirm_password:
         raise HTTPException(status_code=422, detail="Passwords do not match")
     if len(body.new_password) < 8:
         raise HTTPException(status_code=422, detail="Password must be at least 8 characters")
     current_user.password_hash = hash_password(body.new_password)
+    current_user.must_change_password = False
+    # Invalidate all other sessions
+    current_token_value = authorization[7:] if authorization and authorization.startswith("Bearer ") else None
+    result = await db.execute(select(Token).where(Token.user_id == current_user.id))
+    for token in result.scalars().all():
+        if token.token != current_token_value:
+            await db.delete(token)
     await db.commit()

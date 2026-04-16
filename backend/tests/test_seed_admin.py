@@ -12,3 +12,4 @@ async def test_admin_login_works(client):
     data = response.json()
     assert data["user"]["role"] == "admin"
     assert "token" in data
+    assert data["must_change_password"] is True

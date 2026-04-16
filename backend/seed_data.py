@@ -190,4 +190,5 @@ async def seed_admin_user(session: AsyncSession) -> None:
             username="admin",
             password_hash=hash_password("admin"),
             role="admin",
+            must_change_password=True,
         ))
