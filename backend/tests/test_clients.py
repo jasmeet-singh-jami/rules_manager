@@ -76,3 +76,15 @@ async def test_contributor_cannot_edit_unassigned_client(client, authed_client):
         headers={"Authorization": f"Bearer {contrib_token}"},
     )
     assert response.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_contributor_cannot_create_client(client):
+    reg = await client.post("/api/auth/register", json={"username": "contrib_create", "password": "pw"})
+    contrib_token = reg.json()["token"]
+    response = await client.post(
+        "/api/clients",
+        json={"code": "NOPE", "name": "Should Fail"},
+        headers={"Authorization": f"Bearer {contrib_token}"},
+    )
+    assert response.status_code == 403

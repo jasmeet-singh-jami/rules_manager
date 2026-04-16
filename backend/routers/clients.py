@@ -7,7 +7,7 @@ from sqlalchemy.exc import IntegrityError
 from database import get_db
 from models import Client, User, UserClientAccess
 from schemas import ClientCreate, ClientUpdate, ClientOut
-from auth_deps import get_current_user, check_client_access
+from auth_deps import get_current_user, check_client_access, require_admin
 
 router = APIRouter(tags=["clients"])
 
@@ -24,7 +24,7 @@ async def list_clients(
 @router.post("/clients", response_model=ClientOut, status_code=status.HTTP_201_CREATED)
 async def create_client(
     body: ClientCreate,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ):
     client = Client(**body.model_dump())
