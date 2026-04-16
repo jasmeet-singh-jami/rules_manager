@@ -1,4 +1,6 @@
 import pytest
+from sqlalchemy import select
+from models import User as UserModel
 
 
 @pytest.mark.asyncio
@@ -153,13 +155,10 @@ async def test_change_password_invalidates_other_tokens(client):
 
 @pytest.mark.asyncio
 async def test_change_password_clears_must_change_password(client, db):
-    from sqlalchemy import select as sa_select
-    from models import User as UserModel
-
     reg = await client.post("/api/auth/register", json={"username": "mustclear_user", "password": "oldpassword"})
     token = reg.json()["token"]
 
-    result = await db.execute(sa_select(UserModel).where(UserModel.username == "mustclear_user"))
+    result = await db.execute(select(UserModel).where(UserModel.username == "mustclear_user"))
     user_row = result.scalar_one()
     user_row.must_change_password = True
     await db.commit()
