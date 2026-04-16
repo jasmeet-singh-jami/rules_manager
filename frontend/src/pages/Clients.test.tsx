@@ -2,6 +2,7 @@ import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import { vi } from 'vitest'
 import { MemoryRouter } from 'react-router-dom'
 import { Clients } from './Clients'
+import { AuthProvider } from '../context/AuthContext'
 import * as api from '../api/client'
 
 vi.mock('../api/client')
@@ -19,18 +20,18 @@ describe('Clients page', () => {
   })
 
   it('renders page heading', async () => {
-    render(<MemoryRouter><Clients /></MemoryRouter>)
+    render(<AuthProvider><MemoryRouter><Clients /></MemoryRouter></AuthProvider>)
     expect(screen.getByText('Clients')).toBeInTheDocument()
   })
 
   it('lists clients after load', async () => {
-    render(<MemoryRouter><Clients /></MemoryRouter>)
+    render(<AuthProvider><MemoryRouter><Clients /></MemoryRouter></AuthProvider>)
     await waitFor(() => expect(screen.getByText('INFY')).toBeInTheDocument())
     expect(screen.getByText('Infosys')).toBeInTheDocument()
   })
 
   it('opens new client modal on button click', async () => {
-    render(<MemoryRouter><Clients /></MemoryRouter>)
+    render(<AuthProvider><MemoryRouter><Clients /></MemoryRouter></AuthProvider>)
     await waitFor(() => screen.getByText('INFY'))
     fireEvent.click(screen.getByRole('button', { name: /new client/i }))
     expect(screen.getByLabelText(/client code/i)).toBeInTheDocument()

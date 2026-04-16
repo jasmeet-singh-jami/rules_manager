@@ -2,6 +2,7 @@ import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import { vi } from 'vitest'
 import { MemoryRouter } from 'react-router-dom'
 import { ImportDrl } from './ImportDrl'
+import { AuthProvider } from '../context/AuthContext'
 import * as api from '../api/client'
 
 vi.mock('../api/client')
@@ -32,17 +33,17 @@ beforeEach(() => {
 
 describe('ImportDrl page', () => {
   it('renders page heading', () => {
-    render(<MemoryRouter><ImportDrl /></MemoryRouter>)
+    render(<AuthProvider><MemoryRouter><ImportDrl /></MemoryRouter></AuthProvider>)
     expect(screen.getByText('Import DRL')).toBeInTheDocument()
   })
 
   it('shows file upload area', () => {
-    render(<MemoryRouter><ImportDrl /></MemoryRouter>)
+    render(<AuthProvider><MemoryRouter><ImportDrl /></MemoryRouter></AuthProvider>)
     expect(screen.getByText(/drop a .drl file/i)).toBeInTheDocument()
   })
 
   it('shows preview table after file upload', async () => {
-    render(<MemoryRouter><ImportDrl /></MemoryRouter>)
+    render(<AuthProvider><MemoryRouter><ImportDrl /></MemoryRouter></AuthProvider>)
     await waitFor(() => screen.getByText('Infosys (INFY)'))
 
     const file = new File(['package com.test;'], 'test.drl', { type: 'text/plain' })

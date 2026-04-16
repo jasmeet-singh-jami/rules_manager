@@ -2,6 +2,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import { vi } from 'vitest'
 import { MemoryRouter } from 'react-router-dom'
 import { RuleLibrary } from './RuleLibrary'
+import { AuthProvider } from '../context/AuthContext'
 import * as api from '../api/client'
 
 vi.mock('../api/client')
@@ -31,24 +32,24 @@ beforeEach(() => {
 
 describe('RuleLibrary', () => {
   it('renders the page heading', () => {
-    render(<MemoryRouter><RuleLibrary /></MemoryRouter>)
+    render(<AuthProvider><MemoryRouter><RuleLibrary /></MemoryRouter></AuthProvider>)
     expect(screen.getByText('Rule Library')).toBeInTheDocument()
   })
 
   it('shows client selector dropdown', async () => {
-    render(<MemoryRouter><RuleLibrary /></MemoryRouter>)
+    render(<AuthProvider><MemoryRouter><RuleLibrary /></MemoryRouter></AuthProvider>)
     await waitFor(() => screen.getByText('Infosys (INFY)'))
     expect(screen.getByRole('combobox', { name: /client/i })).toBeInTheDocument()
   })
 
   it('shows rule type tabs after client selected', async () => {
-    render(<MemoryRouter><RuleLibrary /></MemoryRouter>)
+    render(<AuthProvider><MemoryRouter><RuleLibrary /></MemoryRouter></AuthProvider>)
     await waitFor(() => screen.getByText('Alert Classifier'))
     expect(screen.getByText('Noise Suppression')).toBeInTheDocument()
   })
 
   it('shows rules in the table', async () => {
-    render(<MemoryRouter><RuleLibrary /></MemoryRouter>)
+    render(<AuthProvider><MemoryRouter><RuleLibrary /></MemoryRouter></AuthProvider>)
     await waitFor(() => screen.getByText('AlertRule_1'))
     expect(screen.getAllByText('LogicMonitor').length).toBeGreaterThan(0)
   })

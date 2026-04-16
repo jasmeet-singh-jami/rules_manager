@@ -2,9 +2,29 @@ import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import { vi } from 'vitest'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { Deployments } from './Deployments'
+import { AuthProvider } from '../context/AuthContext'
 import * as api from '../api/client'
+import * as authCtx from '../context/AuthContext'
 
 vi.mock('../api/client')
+vi.mock('../context/AuthContext', async (importOriginal) => {
+  const actual = await importOriginal<typeof authCtx>()
+  return {
+    ...actual,
+    useAuth: vi.fn(() => ({
+      user: { id: 'u1', username: 'admin', role: 'admin' as const },
+      token: 'tok',
+      clientAccess: ['c1'],
+      mustChangePassword: false,
+      isAdmin: true,
+      hasEditAccess: () => true,
+      addClientAccess: vi.fn(),
+      login: vi.fn(),
+      logout: vi.fn(),
+      clearMustChangePassword: vi.fn(),
+    })),
+  }
+})
 
 const mockClient = { id: 'c1', code: 'INFY', name: 'Infosys', description: null, created_at: '' }
 const mockDeployments = [
@@ -22,11 +42,13 @@ beforeEach(() => {
 
 function renderWithRoute(clientId = 'c1') {
   return render(
-    <MemoryRouter initialEntries={[`/clients/${clientId}/deployments`]}>
-      <Routes>
-        <Route path="/clients/:id/deployments" element={<Deployments />} />
-      </Routes>
-    </MemoryRouter>
+    <AuthProvider>
+      <MemoryRouter initialEntries={[`/clients/${clientId}/deployments`]}>
+        <Routes>
+          <Route path="/clients/:id/deployments" element={<Deployments />} />
+        </Routes>
+      </MemoryRouter>
+    </AuthProvider>
   )
 }
 
