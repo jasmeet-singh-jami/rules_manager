@@ -1,0 +1,83 @@
+<h2>System Architecture</h2>
+<p class="subtitle">Polycloud Rules Manager — FastAPI + React + PostgreSQL</p>
+
+<div class="mockup">
+  <div class="mockup-header">Component Overview</div>
+  <div class="mockup-body">
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;font-size:12px;">
+
+      <!-- Frontend -->
+      <div style="border:2px solid #0b5cab;border-radius:8px;overflow:hidden;">
+        <div style="background:#0b5cab;color:#fff;padding:8px 12px;font-weight:700;">FRONTEND (React + Vite)</div>
+        <div style="padding:10px;display:grid;gap:6px;">
+          <div style="background:#f0f6ff;border-radius:5px;padding:6px 10px;">📚 Rule Library<br/><span style="font-size:10px;color:#5c6c85;">Browse, search, filter all rules across clients</span></div>
+          <div style="background:#f0f6ff;border-radius:5px;padding:6px 10px;">✏️ Rule Editor<br/><span style="font-size:10px;color:#5c6c85;">Condition/action builder + DRL live preview</span></div>
+          <div style="background:#f0f6ff;border-radius:5px;padding:6px 10px;">👥 Client Manager<br/><span style="font-size:10px;color:#5c6c85;">Create/manage clients, import DRL files</span></div>
+          <div style="background:#f0f6ff;border-radius:5px;padding:6px 10px;">📦 Deployments<br/><span style="font-size:10px;color:#5c6c85;">Version snapshots + DRL bundle export</span></div>
+        </div>
+      </div>
+
+      <!-- Backend -->
+      <div style="border:2px solid #1b7f47;border-radius:8px;overflow:hidden;">
+        <div style="background:#1b7f47;color:#fff;padding:8px 12px;font-weight:700;">BACKEND (FastAPI)</div>
+        <div style="padding:10px;display:grid;gap:6px;">
+          <div style="background:#f0faf4;border-radius:5px;padding:6px 10px;">🔌 REST API<br/><span style="font-size:10px;color:#5c6c85;">CRUD for rules, clients, deployments</span></div>
+          <div style="background:#f0faf4;border-radius:5px;padding:6px 10px;">⬆️ DRL Importer<br/><span style="font-size:10px;color:#5c6c85;">Parse .drl files → structured rules in DB</span></div>
+          <div style="background:#f0faf4;border-radius:5px;padding:6px 10px;">⬇️ DRL Generator<br/><span style="font-size:10px;color:#5c6c85;">Reconstruct valid .drl from stored rules</span></div>
+          <div style="background:#f0faf4;border-radius:5px;padding:6px 10px;">📦 Export Engine<br/><span style="font-size:10px;color:#5c6c85;">Bundle all rule types as ZIP for deployment</span></div>
+        </div>
+      </div>
+
+      <!-- Data -->
+      <div style="border:2px solid #a25d00;border-radius:8px;overflow:hidden;">
+        <div style="background:#a25d00;color:#fff;padding:8px 12px;font-weight:700;">DATA (PostgreSQL)</div>
+        <div style="padding:10px;display:grid;gap:6px;">
+          <div style="background:#fffaf0;border-radius:5px;padding:6px 10px;">clients<br/><span style="font-size:10px;color:#5c6c85;">code, name, description</span></div>
+          <div style="background:#fffaf0;border-radius:5px;padding:6px 10px;">rule_types<br/><span style="font-size:10px;color:#5c6c85;">noise_suppression, correlation, incident…</span></div>
+          <div style="background:#fffaf0;border-radius:5px;padding:6px 10px;">rules<br/><span style="font-size:10px;color:#5c6c85;">condition, action, tool, enabled, client_id</span></div>
+          <div style="background:#fffaf0;border-radius:5px;padding:6px 10px;">deployments + snapshots<br/><span style="font-size:10px;color:#5c6c85;">versioned rule states per client</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Flow arrows -->
+    <div style="margin-top:14px;padding:10px;background:#f5f8fd;border-radius:8px;font-size:11px;color:#5c6c85;text-align:center;">
+      Browser → React (port 5173 dev / served by FastAPI in prod) → FastAPI REST API (port 8000) → PostgreSQL
+    </div>
+
+    <!-- Pipeline mapping -->
+    <div style="margin-top:14px;">
+      <div style="font-size:12px;font-weight:700;color:#0f1d31;margin-bottom:8px;">Polycloud Alert Pipeline → Rule Types</div>
+      <div style="display:flex;gap:0;font-size:10px;">
+        <div style="flex:1;background:#e8f0fe;border:1px solid #0b5cab;padding:6px;text-align:center;border-radius:6px 0 0 6px;">
+          <div style="font-weight:700;color:#0b5cab;">1. Alerts In</div>
+          <div style="color:#5c6c85;margin-top:2px;">Alert Classifier</div>
+        </div>
+        <div style="display:flex;align-items:center;color:#5c6c85;padding:0 4px;">→</div>
+        <div style="flex:1;background:#fff2da;border:1px solid #a25d00;padding:6px;text-align:center;">
+          <div style="font-weight:700;color:#a25d00;">2. Grouping</div>
+          <div style="color:#5c6c85;margin-top:2px;">Noise Suppression</div>
+        </div>
+        <div style="display:flex;align-items:center;color:#5c6c85;padding:0 4px;">→</div>
+        <div style="flex:1;background:#f0faf4;border:1px solid #1b7f47;padding:6px;text-align:center;">
+          <div style="font-weight:700;color:#1b7f47;">3. Issues</div>
+          <div style="color:#5c6c85;margin-top:2px;">Issue Correlation</div>
+        </div>
+        <div style="display:flex;align-items:center;color:#5c6c85;padding:0 4px;">→</div>
+        <div style="flex:1;background:#fee2e2;border:1px solid #b42318;padding:6px;text-align:center;">
+          <div style="font-weight:700;color:#b42318;">4. Tickets</div>
+          <div style="color:#5c6c85;margin-top:2px;">Incident Creation</div>
+        </div>
+        <div style="display:flex;align-items:center;color:#5c6c85;padding:0 4px;">→</div>
+        <div style="flex:1;background:#f3f0ff;border:1px solid #6c35de;padding:6px;text-align:center;border-radius:0 6px 6px 0;">
+          <div style="font-weight:700;color:#6c35de;">5. Actions</div>
+          <div style="color:#5c6c85;margin-top:2px;">Recommendations</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div style="margin-top:12px;font-size:12px;color:#5c6c85;text-align:center;">
+  Does this architecture look right? Reply in terminal to continue to the data model.
+</div>

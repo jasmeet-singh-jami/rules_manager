@@ -1,0 +1,98 @@
+<h2>Data Model</h2>
+<p class="subtitle">PostgreSQL schema — entities and relationships</p>
+
+<div class="mockup">
+  <div class="mockup-header">Database Tables</div>
+  <div class="mockup-body">
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:11px;">
+
+      <!-- clients -->
+      <div style="border:1px solid #dce4ef;border-radius:7px;overflow:hidden;">
+        <div style="background:#0b5cab;color:#fff;padding:6px 10px;font-weight:700;font-size:12px;">clients</div>
+        <table style="width:100%;border-collapse:collapse;">
+          <tr style="background:#f5f8fe;"><th style="padding:4px 8px;text-align:left;color:#5c6c85;font-size:10px;">COLUMN</th><th style="padding:4px 8px;text-align:left;color:#5c6c85;font-size:10px;">TYPE</th><th style="padding:4px 8px;text-align:left;color:#5c6c85;font-size:10px;">NOTES</th></tr>
+          <tr style="border-top:1px solid #f0f0f0;"><td style="padding:4px 8px;font-family:monospace;">id</td><td style="padding:4px 8px;color:#a25d00;">UUID PK</td><td style="padding:4px 8px;color:#5c6c85;"></td></tr>
+          <tr style="border-top:1px solid #f0f0f0;"><td style="padding:4px 8px;font-family:monospace;">code</td><td style="padding:4px 8px;color:#a25d00;">VARCHAR(20)</td><td style="padding:4px 8px;color:#5c6c85;">e.g. "INFY", unique</td></tr>
+          <tr style="border-top:1px solid #f0f0f0;"><td style="padding:4px 8px;font-family:monospace;">name</td><td style="padding:4px 8px;color:#a25d00;">VARCHAR(100)</td><td style="padding:4px 8px;color:#5c6c85;">display name</td></tr>
+          <tr style="border-top:1px solid #f0f0f0;"><td style="padding:4px 8px;font-family:monospace;">description</td><td style="padding:4px 8px;color:#a25d00;">TEXT</td><td style="padding:4px 8px;color:#5c6c85;"></td></tr>
+          <tr style="border-top:1px solid #f0f0f0;"><td style="padding:4px 8px;font-family:monospace;">created_at</td><td style="padding:4px 8px;color:#a25d00;">TIMESTAMPTZ</td><td style="padding:4px 8px;color:#5c6c85;"></td></tr>
+        </table>
+      </div>
+
+      <!-- rule_types -->
+      <div style="border:1px solid #dce4ef;border-radius:7px;overflow:hidden;">
+        <div style="background:#6c35de;color:#fff;padding:6px 10px;font-weight:700;font-size:12px;">rule_types  <span style="font-size:10px;font-weight:400;opacity:0.8;">(seeded, not user-editable)</span></div>
+        <table style="width:100%;border-collapse:collapse;">
+          <tr style="background:#f5f8fe;"><th style="padding:4px 8px;text-align:left;color:#5c6c85;font-size:10px;">COLUMN</th><th style="padding:4px 8px;text-align:left;color:#5c6c85;font-size:10px;">TYPE</th><th style="padding:4px 8px;text-align:left;color:#5c6c85;font-size:10px;">EXAMPLE</th></tr>
+          <tr style="border-top:1px solid #f0f0f0;"><td style="padding:4px 8px;font-family:monospace;">id</td><td style="padding:4px 8px;color:#a25d00;">UUID PK</td><td style="padding:4px 8px;color:#5c6c85;"></td></tr>
+          <tr style="border-top:1px solid #f0f0f0;"><td style="padding:4px 8px;font-family:monospace;">slug</td><td style="padding:4px 8px;color:#a25d00;">VARCHAR(50)</td><td style="padding:4px 8px;color:#5c6c85;">noise_suppression</td></tr>
+          <tr style="border-top:1px solid #f0f0f0;"><td style="padding:4px 8px;font-family:monospace;">name</td><td style="padding:4px 8px;color:#a25d00;">VARCHAR(100)</td><td style="padding:4px 8px;color:#5c6c85;">Noise Suppression</td></tr>
+          <tr style="border-top:1px solid #f0f0f0;"><td style="padding:4px 8px;font-family:monospace;">pipeline_stage</td><td style="padding:4px 8px;color:#a25d00;">INT</td><td style="padding:4px 8px;color:#5c6c85;">2 (grouping)</td></tr>
+          <tr style="border-top:1px solid #f0f0f0;"><td style="padding:4px 8px;font-family:monospace;">drl_package</td><td style="padding:4px 8px;color:#a25d00;">VARCHAR(200)</td><td style="padding:4px 8px;color:#5c6c85;">com.infy.ceh…</td></tr>
+          <tr style="border-top:1px solid #f0f0f0;"><td style="padding:4px 8px;font-family:monospace;">drl_imports</td><td style="padding:4px 8px;color:#a25d00;">TEXT</td><td style="padding:4px 8px;color:#5c6c85;">import java.util…</td></tr>
+          <tr style="border-top:1px solid #f0f0f0;"><td style="padding:4px 8px;font-family:monospace;">drl_functions</td><td style="padding:4px 8px;color:#a25d00;">TEXT</td><td style="padding:4px 8px;color:#5c6c85;">helper functions</td></tr>
+        </table>
+      </div>
+
+      <!-- rules -->
+      <div style="border:2px solid #0b5cab;border-radius:7px;overflow:hidden;grid-column:1/-1;">
+        <div style="background:#0c3a70;color:#fff;padding:6px 10px;font-weight:700;font-size:12px;">rules  <span style="font-size:10px;font-weight:400;opacity:0.8;">(core table)</span></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0;">
+          <table style="width:100%;border-collapse:collapse;border-right:1px solid #dce4ef;">
+            <tr style="background:#f5f8fe;"><th style="padding:4px 8px;text-align:left;color:#5c6c85;font-size:10px;">COLUMN</th><th style="padding:4px 8px;text-align:left;color:#5c6c85;font-size:10px;">TYPE</th></tr>
+            <tr style="border-top:1px solid #f0f0f0;"><td style="padding:4px 8px;font-family:monospace;">id</td><td style="padding:4px 8px;color:#a25d00;">UUID PK</td></tr>
+            <tr style="border-top:1px solid #f0f0f0;"><td style="padding:4px 8px;font-family:monospace;">client_id</td><td style="padding:4px 8px;color:#a25d00;">UUID FK → clients</td></tr>
+            <tr style="border-top:1px solid #f0f0f0;"><td style="padding:4px 8px;font-family:monospace;">rule_type_id</td><td style="padding:4px 8px;color:#a25d00;">UUID FK → rule_types</td></tr>
+            <tr style="border-top:1px solid #f0f0f0;"><td style="padding:4px 8px;font-family:monospace;">name</td><td style="padding:4px 8px;color:#a25d00;">VARCHAR(150)</td></tr>
+            <tr style="border-top:1px solid #f0f0f0;"><td style="padding:4px 8px;font-family:monospace;">description</td><td style="padding:4px 8px;color:#a25d00;">TEXT</td></tr>
+            <tr style="border-top:1px solid #f0f0f0;"><td style="padding:4px 8px;font-family:monospace;">tool</td><td style="padding:4px 8px;color:#a25d00;">VARCHAR(50)</td></tr>
+          </table>
+          <table style="width:100%;border-collapse:collapse;">
+            <tr style="background:#f5f8fe;"><th style="padding:4px 8px;text-align:left;color:#5c6c85;font-size:10px;">COLUMN</th><th style="padding:4px 8px;text-align:left;color:#5c6c85;font-size:10px;">TYPE / NOTES</th></tr>
+            <tr style="border-top:1px solid #f0f0f0;"><td style="padding:4px 8px;font-family:monospace;">condition_raw</td><td style="padding:4px 8px;color:#a25d00;">TEXT — raw DRL when/condition</td></tr>
+            <tr style="border-top:1px solid #f0f0f0;"><td style="padding:4px 8px;font-family:monospace;">action_raw</td><td style="padding:4px 8px;color:#a25d00;">TEXT — raw DRL then/action</td></tr>
+            <tr style="border-top:1px solid #f0f0f0;"><td style="padding:4px 8px;font-family:monospace;">condition_meta</td><td style="padding:4px 8px;color:#a25d00;">JSONB — builder rows</td></tr>
+            <tr style="border-top:1px solid #f0f0f0;"><td style="padding:4px 8px;font-family:monospace;">action_meta</td><td style="padding:4px 8px;color:#a25d00;">JSONB — builder rows</td></tr>
+            <tr style="border-top:1px solid #f0f0f0;"><td style="padding:4px 8px;font-family:monospace;">enabled</td><td style="padding:4px 8px;color:#a25d00;">BOOLEAN</td></tr>
+            <tr style="border-top:1px solid #f0f0f0;"><td style="padding:4px 8px;font-family:monospace;">priority / window</td><td style="padding:4px 8px;color:#a25d00;">VARCHAR / INT</td></tr>
+            <tr style="border-top:1px solid #f0f0f0;"><td style="padding:4px 8px;font-family:monospace;">created_at / updated_at</td><td style="padding:4px 8px;color:#a25d00;">TIMESTAMPTZ</td></tr>
+          </table>
+        </div>
+      </div>
+
+      <!-- deployments -->
+      <div style="border:1px solid #dce4ef;border-radius:7px;overflow:hidden;">
+        <div style="background:#1b7f47;color:#fff;padding:6px 10px;font-weight:700;font-size:12px;">deployments</div>
+        <table style="width:100%;border-collapse:collapse;">
+          <tr style="background:#f5f8fe;"><th style="padding:4px 8px;text-align:left;color:#5c6c85;font-size:10px;">COLUMN</th><th style="padding:4px 8px;text-align:left;color:#5c6c85;font-size:10px;">TYPE</th></tr>
+          <tr style="border-top:1px solid #f0f0f0;"><td style="padding:4px 8px;font-family:monospace;">id</td><td style="padding:4px 8px;color:#a25d00;">UUID PK</td></tr>
+          <tr style="border-top:1px solid #f0f0f0;"><td style="padding:4px 8px;font-family:monospace;">client_id</td><td style="padding:4px 8px;color:#a25d00;">UUID FK → clients</td></tr>
+          <tr style="border-top:1px solid #f0f0f0;"><td style="padding:4px 8px;font-family:monospace;">version</td><td style="padding:4px 8px;color:#a25d00;">VARCHAR(20) e.g. v1.0</td></tr>
+          <tr style="border-top:1px solid #f0f0f0;"><td style="padding:4px 8px;font-family:monospace;">status</td><td style="padding:4px 8px;color:#a25d00;">ENUM: draft/deployed</td></tr>
+          <tr style="border-top:1px solid #f0f0f0;"><td style="padding:4px 8px;font-family:monospace;">notes</td><td style="padding:4px 8px;color:#a25d00;">TEXT</td></tr>
+          <tr style="border-top:1px solid #f0f0f0;"><td style="padding:4px 8px;font-family:monospace;">created_at</td><td style="padding:4px 8px;color:#a25d00;">TIMESTAMPTZ</td></tr>
+        </table>
+      </div>
+
+      <!-- deployment_rule_snapshots -->
+      <div style="border:1px solid #dce4ef;border-radius:7px;overflow:hidden;">
+        <div style="background:#1b7f47;color:#fff;padding:6px 10px;font-weight:700;font-size:12px;">deployment_rule_snapshots</div>
+        <table style="width:100%;border-collapse:collapse;">
+          <tr style="background:#f5f8fe;"><th style="padding:4px 8px;text-align:left;color:#5c6c85;font-size:10px;">COLUMN</th><th style="padding:4px 8px;text-align:left;color:#5c6c85;font-size:10px;">TYPE / NOTES</th></tr>
+          <tr style="border-top:1px solid #f0f0f0;"><td style="padding:4px 8px;font-family:monospace;">id</td><td style="padding:4px 8px;color:#a25d00;">UUID PK</td></tr>
+          <tr style="border-top:1px solid #f0f0f0;"><td style="padding:4px 8px;font-family:monospace;">deployment_id</td><td style="padding:4px 8px;color:#a25d00;">UUID FK → deployments</td></tr>
+          <tr style="border-top:1px solid #f0f0f0;"><td style="padding:4px 8px;font-family:monospace;">rule_id</td><td style="padding:4px 8px;color:#a25d00;">UUID FK → rules</td></tr>
+          <tr style="border-top:1px solid #f0f0f0;"><td style="padding:4px 8px;font-family:monospace;">rule_snapshot</td><td style="padding:4px 8px;color:#a25d00;">JSONB — full rule at deploy time</td></tr>
+          <tr style="border-top:1px solid #f0f0f0;"><td style="padding:4px 8px;font-family:monospace;">drl_block</td><td style="padding:4px 8px;color:#a25d00;">TEXT — rendered DRL for this rule</td></tr>
+        </table>
+        <div style="padding:6px 10px;font-size:10px;color:#5c6c85;background:#f9fdf9;">Snapshot captures rule state at deploy time — rules can change later without affecting history.</div>
+      </div>
+
+    </div>
+
+    <div style="margin-top:12px;padding:8px 12px;background:#fffaf0;border:1px solid #e0c070;border-radius:6px;font-size:11px;color:#5c6c85;">
+      <strong style="color:#a25d00;">Key design choice:</strong> Rules store both <code>condition_raw</code>/<code>action_raw</code> (exact DRL text — used when importing existing .drl files) and <code>condition_meta</code>/<code>action_meta</code> (structured JSONB — used by the visual condition/action builder). Imported rules start with raw only; rules created via builder have both.
+    </div>
+  </div>
+</div>

@@ -1,0 +1,106 @@
+  Unix Deployment Steps
+
+  1 — Copy the zip to your server
+
+  scp D:/GenAI/rules-generator/polycloud_rules_manager_deploy.zip user@your-server:/opt/
+
+  Or transfer it via whatever method you have (SFTP, USB, etc.).
+
+  ---
+  2 — On the Unix machine: unzip
+
+  cd /opt
+  unzip polycloud_rules_manager_deploy.zip -d rules-manager
+  cd rules-manager
+
+  ---
+  3 — Install system prerequisites
+
+  # Ubuntu/Debian
+  sudo apt update
+  sudo apt install -y python3 python3-pip python3-venv postgresql postgresql-contrib
+
+  # RHEL/CentOS/Rocky
+  sudo dnf install -y python3 python3-pip postgresql-server postgresql-contrib
+  sudo postgresql-setup --initdb
+
+  ---
+  4 — Set up PostgreSQL
+
+  sudo systemctl start postgresql
+  sudo systemctl enable postgresql
+
+  sudo -u postgres psql <<EOF
+  CREATE USER appuser WITH PASSWORD 'changeme';
+  CREATE DATABASE polycloud_rm OWNER appuser;
+  GRANT ALL PRIVILEGES ON DATABASE polycloud_rm TO appuser;
+  EOF
+
+  ---
+  5 — Create the .env file
+
+  cat > /opt/rules-manager/backend/.env << 'EOF'
+  DATABASE_URL=postgresql+asyncpg://appuser:changeme@localhost/polycloud_rm
+  EOF
+
+  ---
+  6 — Create Python virtual environment and install dependencies
+
+  cd /opt/rules-manager/backend
+  python3 -m venv venv
+  source venv/bin/activate
+  pip install --upgrade pip
+  pip install -r requirements.txt
+
+  ---
+  7 — Run the app
+
+  Quick start (foreground, for testing):
+  cd /opt/rules-manager/backend
+  source venv/bin/activate
+  uvicorn main:app --host 0.0.0.0 --port 8000
+
+  Then open http://your-server-ip:8000 in a browser. Login: admin / admin.
+
+  Keep it running with systemd (recommended for production):
+  sudo tee /etc/systemd/system/rules-manager.service << 'EOF'
+  [Unit]
+  Description=Polycloud Rules Manager
+  After=network.target postgresql.service
+
+  [Service]
+  User=www-data
+  WorkingDirectory=/opt/rules-manager/backend
+  ExecStart=/opt/rules-manager/backend/venv/bin/uvicorn main:app --host 0.0.0.0 --port 8000
+  Restart=always
+  RestartSec=5
+  EnvironmentFile=/opt/rules-manager/backend/.env
+
+  [Install]
+  WantedBy=multi-user.target
+  EOF
+
+  sudo systemctl daemon-reload
+  sudo systemctl enable rules-manager
+  sudo systemctl start rules-manager
+  sudo systemctl status rules-manager
+
+  ---
+  8 — (Optional) Put nginx in front
+
+  If you want it on port 80 instead of 8000:
+  sudo apt install -y nginx
+  sudo tee /etc/nginx/sites-available/rules-manager << 'EOF'
+  server {
+      listen 80;
+      server_name your-server-ip;
+
+      location / {
+          proxy_pass http://127.0.0.1:8000;
+          proxy_set_header Host $host;
+          proxy_set_header X-Real-IP $remote_addr;
+      }
+  }
+  EOF
+  sudo ln -s /etc/nginx/sites-available/rules-manager /etc/nginx/sites-enabled/
+  sudo nginx -t && sudo systemctl reload nginx

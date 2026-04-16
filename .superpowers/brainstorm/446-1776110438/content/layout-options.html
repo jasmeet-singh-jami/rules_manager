@@ -1,0 +1,128 @@
+<h2>App Layout Options</h2>
+<p class="subtitle">Which navigation structure fits the workflow best?</p>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Left Sidebar Navigation</h3>
+      <p>Persistent sidebar with section links. Main content area on the right. Classic "admin tool" feel.</p>
+      <div class="mockup" style="margin-top:10px;">
+        <div class="mockup-header">Layout Preview</div>
+        <div class="mockup-body" style="padding:0;overflow:hidden;">
+          <div style="display:flex;height:220px;font-size:11px;">
+            <div style="width:140px;background:#0c3a70;color:#fff;padding:10px;flex-shrink:0;">
+              <div style="font-weight:700;font-size:12px;margin-bottom:12px;opacity:0.8;">POLYCLOUD RULES</div>
+              <div style="padding:6px 8px;background:rgba(255,255,255,0.15);border-radius:5px;margin-bottom:4px;">📚 Rule Library</div>
+              <div style="padding:6px 8px;margin-bottom:4px;opacity:0.7;">👥 Clients</div>
+              <div style="padding:6px 8px;margin-bottom:4px;opacity:0.7;">📦 Deployments</div>
+              <div style="padding:6px 8px;margin-bottom:4px;opacity:0.7;">📤 DRL Export</div>
+              <div style="padding:6px 8px;margin-bottom:4px;opacity:0.7;">⬆ Import DRL</div>
+            </div>
+            <div style="flex:1;padding:10px;background:#f5f8fd;">
+              <div style="display:flex;gap:6px;margin-bottom:8px;">
+                <div style="flex:1;background:#fff;border:1px solid #dce4ef;border-radius:6px;padding:6px 10px;font-size:10px;color:#5c6c85;">🔍 Search rules...</div>
+                <div style="background:#0b5cab;color:#fff;border-radius:6px;padding:6px 10px;font-size:10px;">+ Add Rule</div>
+              </div>
+              <div style="display:flex;gap:6px;margin-bottom:6px;font-size:10px;color:#5c6c85;">
+                <div style="padding:3px 8px;background:#e8f0fe;color:#0b5cab;border-radius:10px;">Noise Suppression</div>
+                <div style="padding:3px 8px;background:#f2f6fc;border-radius:10px;">Alert Classifier</div>
+                <div style="padding:3px 8px;background:#f2f6fc;border-radius:10px;">Correlation</div>
+                <div style="padding:3px 8px;background:#f2f6fc;border-radius:10px;">Incident</div>
+              </div>
+              <div style="background:#fff;border:1px solid #dce4ef;border-radius:6px;overflow:hidden;">
+                <div style="padding:5px 10px;background:#f5f8fe;font-size:9px;color:#5c6c85;display:flex;gap:20px;"><span>RULE NAME</span><span>CLIENT</span><span style="margin-left:auto;">TOOL</span></div>
+                <div style="padding:6px 10px;border-bottom:1px solid #f0f0f0;font-size:10px;display:flex;gap:20px;"><span>LogicMonitorNS_1</span><span style="color:#5c6c85;">INFY</span><span style="margin-left:auto;color:#5c6c85;">LogicMonitor</span></div>
+                <div style="padding:6px 10px;border-bottom:1px solid #f0f0f0;font-size:10px;display:flex;gap:20px;"><span>LogicMonitorNS_2</span><span style="color:#5c6c85;">INFY</span><span style="margin-left:auto;color:#5c6c85;">LogicMonitor</span></div>
+                <div style="padding:6px 10px;font-size:10px;display:flex;gap:20px;color:#aaa;"><span>AlertClassifier_1</span><span>CLIENT_X</span><span style="margin-left:auto;">SCOM</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Top Navigation + Client Context ⭐ Recommended</h3>
+      <p>Horizontal top nav. Client selector always visible. Rules view is always scoped to a client or "All Clients". Mirrors the existing HTML's tab-based feel.</p>
+      <div class="mockup" style="margin-top:10px;">
+        <div class="mockup-header">Layout Preview</div>
+        <div class="mockup-body" style="padding:0;overflow:hidden;">
+          <div style="display:flex;flex-direction:column;height:220px;font-size:11px;">
+            <div style="background:linear-gradient(135deg,#0c3a70,#0f6fb3);color:#fff;padding:8px 12px;display:flex;align-items:center;gap:12px;">
+              <div style="font-weight:700;font-size:12px;">Polycloud Rules Manager</div>
+              <div style="display:flex;gap:8px;margin-left:auto;font-size:10px;">
+                <div style="padding:3px 10px;background:rgba(255,255,255,0.2);border-radius:12px;">Rule Library</div>
+                <div style="padding:3px 10px;opacity:0.7;">Clients</div>
+                <div style="padding:3px 10px;opacity:0.7;">Deployments</div>
+                <div style="padding:3px 10px;opacity:0.7;">Export</div>
+              </div>
+              <div style="background:rgba(255,255,255,0.15);border-radius:6px;padding:3px 8px;font-size:10px;">📂 Client: INFY ▾</div>
+            </div>
+            <div style="padding:8px 12px;background:#fff;border-bottom:1px solid #dce4ef;display:flex;gap:6px;font-size:10px;">
+              <div style="padding:4px 10px;background:#0b5cab;color:#fff;border-radius:6px;">Noise Suppression <span style="background:rgba(255,255,255,0.3);border-radius:8px;padding:0 5px;">7</span></div>
+              <div style="padding:4px 10px;background:#f2f6fc;border-radius:6px;color:#5c6c85;">Alert Classifier</div>
+              <div style="padding:4px 10px;background:#f2f6fc;border-radius:6px;color:#5c6c85;">Correlation</div>
+              <div style="padding:4px 10px;background:#f2f6fc;border-radius:6px;color:#5c6c85;">Incident Creation</div>
+              <div style="padding:4px 10px;background:#f2f6fc;border-radius:6px;color:#5c6c85;">Recommendation</div>
+              <div style="margin-left:auto;display:flex;gap:6px;"><div style="padding:4px 10px;background:#e8f5ec;color:#1b7f47;border-radius:6px;">↓ Export DRL</div><div style="padding:4px 10px;background:#0b5cab;color:#fff;border-radius:6px;">+ Add Rule</div></div>
+            </div>
+            <div style="flex:1;padding:8px 12px;background:#f5f8fd;overflow:hidden;">
+              <div style="background:#fff;border:1px solid #dce4ef;border-radius:6px;overflow:hidden;">
+                <div style="padding:5px 10px;background:#f5f8fe;font-size:9px;color:#5c6c85;display:flex;gap:16px;"><span style="width:180px;">RULE NAME</span><span style="width:60px;">TOOL</span><span style="width:60px;">STATUS</span><span style="flex:1;">DESCRIPTION</span></div>
+                <div style="padding:6px 10px;border-bottom:1px solid #f0f0f0;font-size:10px;display:flex;gap:16px;align-items:center;"><span style="width:180px;">LogicMonitorNoiseSuppression_1</span><span style="width:60px;color:#5c6c85;">LM</span><span style="width:60px;"><span style="background:#daf4e3;color:#1b7f47;padding:1px 6px;border-radius:8px;">ON</span></span><span style="flex:1;color:#5c6c85;font-size:9px;">Close CPU alerts for SDWAN resources</span></div>
+                <div style="padding:6px 10px;border-bottom:1px solid #f0f0f0;font-size:10px;display:flex;gap:16px;align-items:center;"><span style="width:180px;">LogicMonitorNoiseSuppression_2</span><span style="width:60px;color:#5c6c85;">LM</span><span style="width:60px;"><span style="background:#daf4e3;color:#1b7f47;padding:1px 6px;border-radius:8px;">ON</span></span><span style="flex:1;color:#5c6c85;font-size:9px;">Filter NW device alerts &lt;10 min old</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Client-First Dashboard</h3>
+      <p>Landing page is a client list. You enter a client context first, then see all their rules and deployments. Good when there are many clients.</p>
+      <div class="mockup" style="margin-top:10px;">
+        <div class="mockup-header">Layout Preview</div>
+        <div class="mockup-body" style="padding:0;overflow:hidden;">
+          <div style="display:flex;flex-direction:column;height:220px;font-size:11px;">
+            <div style="background:linear-gradient(135deg,#0c3a70,#0f6fb3);color:#fff;padding:8px 12px;display:flex;align-items:center;">
+              <div style="font-weight:700;font-size:12px;">Polycloud Rules Manager</div>
+              <div style="margin-left:auto;font-size:10px;opacity:0.8;">Rule Library | Settings</div>
+            </div>
+            <div style="flex:1;padding:10px 12px;background:#f5f8fd;overflow:hidden;">
+              <div style="font-size:10px;color:#5c6c85;margin-bottom:8px;">SELECT A CLIENT TO MANAGE</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;">
+                <div style="background:#fff;border:1px solid #dce4ef;border-radius:6px;padding:8px;cursor:pointer;">
+                  <div style="font-weight:600;font-size:11px;">INFY</div>
+                  <div style="font-size:10px;color:#5c6c85;margin-top:2px;">28 rules · 3 types</div>
+                  <div style="font-size:9px;color:#1b7f47;margin-top:4px;">✓ v2.1 deployed</div>
+                </div>
+                <div style="background:#fff;border:1px solid #dce4ef;border-radius:6px;padding:8px;">
+                  <div style="font-weight:600;font-size:11px;">CLIENT_X</div>
+                  <div style="font-size:10px;color:#5c6c85;margin-top:2px;">12 rules · 2 types</div>
+                  <div style="font-size:9px;color:#a25d00;margin-top:4px;">⚠ Draft</div>
+                </div>
+                <div style="background:#e8f5ff;border:1px dashed #0b5cab;border-radius:6px;padding:8px;display:flex;align-items:center;justify-content:center;color:#0b5cab;font-size:10px;">+ New Client</div>
+              </div>
+              <div style="margin-top:10px;background:#fff;border:1px solid #dce4ef;border-radius:6px;padding:8px;">
+                <div style="font-size:10px;color:#5c6c85;margin-bottom:6px;">GLOBAL RULE LIBRARY (all clients)</div>
+                <div style="font-size:10px;display:flex;gap:8px;">
+                  <div style="padding:3px 8px;background:#f2f6fc;border-radius:8px;">Noise Suppression: 18 rules</div>
+                  <div style="padding:3px 8px;background:#f2f6fc;border-radius:8px;">Correlation: 12 rules</div>
+                  <div style="padding:3px 8px;background:#f2f6fc;border-radius:8px;">Incident: 9 rules</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

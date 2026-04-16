@@ -1,0 +1,78 @@
+<h2>Choose Your Architecture</h2>
+<p class="subtitle">All three use FastAPI + PostgreSQL. The difference is in the frontend layer.</p>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>FastAPI + Jinja2 (Server-Rendered)</h3>
+      <p>HTML pages rendered server-side. Minimal JavaScript. Closest to a traditional web app.</p>
+      <div style="margin-top:10px;">
+        <div class="pros-cons">
+          <div class="pros"><h4>Pros</h4><ul>
+            <li>No build tools (no Node.js, no npm)</li>
+            <li>Simplest deployment</li>
+            <li>Fastest to get running</li>
+          </ul></div>
+          <div class="cons"><h4>Cons</h4><ul>
+            <li>Limited interactivity (DRL preview, condition builder harder)</li>
+            <li>Page reloads for most actions</li>
+            <li>Hard to replicate the rich builder UI</li>
+          </ul></div>
+        </div>
+      </div>
+      <div style="margin-top:8px;padding:6px 10px;background:#f0f4ff;border-radius:6px;font-size:12px;color:#444;">
+        <strong>Stack:</strong> Python · FastAPI · Jinja2 · HTMX · PostgreSQL
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>FastAPI + React (SPA) ⭐ Recommended</h3>
+      <p>FastAPI serves a REST API. React handles all UI. Best for the rich condition/action builder and DRL live preview.</p>
+      <div style="margin-top:10px;">
+        <div class="pros-cons">
+          <div class="pros"><h4>Pros</h4><ul>
+            <li>Fully interactive UI (no page reloads)</li>
+            <li>Easy to replicate the existing condition/action builder</li>
+            <li>Clear separation: API vs. UI</li>
+            <li>Scales well as features grow</li>
+          </ul></div>
+          <div class="cons"><h4>Cons</h4><ul>
+            <li>Requires Node.js for build</li>
+            <li>Two separate servers in dev (or proxy)</li>
+          </ul></div>
+        </div>
+      </div>
+      <div style="margin-top:8px;padding:6px 10px;background:#f0f4ff;border-radius:6px;font-size:12px;color:#444;">
+        <strong>Stack:</strong> Python · FastAPI · React + Vite · PostgreSQL
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>FastAPI + Vue.js (Lightweight SPA)</h3>
+      <p>Same API-first approach as React but Vue is lighter, closer to the existing vanilla JS code style.</p>
+      <div style="margin-top:10px;">
+        <div class="pros-cons">
+          <div class="pros"><h4>Pros</h4><ul>
+            <li>More approachable if team knows HTML/JS</li>
+            <li>Can start with CDN (no build step initially)</li>
+            <li>Good middle ground between options A and B</li>
+          </ul></div>
+          <div class="cons"><h4>Cons</h4><ul>
+            <li>Smaller ecosystem than React</li>
+            <li>Still needs build tooling for production</li>
+          </ul></div>
+        </div>
+      </div>
+      <div style="margin-top:8px;padding:6px 10px;background:#f0f4ff;border-radius:6px;font-size:12px;color:#444;">
+        <strong>Stack:</strong> Python · FastAPI · Vue 3 + Vite · PostgreSQL
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,141 @@
+<h2>Key Workflows & API Surface</h2>
+<p class="subtitle">How the three main flows work end-to-end</p>
+
+<div style="display:grid;gap:16px;font-size:12px;">
+
+  <!-- Workflow 1: Import -->
+  <div class="mockup">
+    <div class="mockup-header" style="background:#1b7f47;color:#fff;">⬆️ Workflow 1 — Import Existing DRL Files</div>
+    <div class="mockup-body">
+      <div style="display:flex;gap:0;align-items:stretch;font-size:11px;">
+        <div style="flex:1;padding:8px;background:#f0faf4;border-radius:6px;text-align:center;">
+          <div style="font-weight:700;margin-bottom:4px;">1. Upload</div>
+          <div style="color:#5c6c85;">User selects .drl file(s) or drops a folder. UI shows file list.</div>
+        </div>
+        <div style="display:flex;align-items:center;padding:0 8px;color:#5c6c85;">→</div>
+        <div style="flex:1;padding:8px;background:#f0faf4;border-radius:6px;text-align:center;">
+          <div style="font-weight:700;margin-bottom:4px;">2. Parse</div>
+          <div style="color:#5c6c85;">FastAPI DRL parser extracts: package, imports, functions, individual rule blocks (name / when / then).</div>
+        </div>
+        <div style="display:flex;align-items:center;padding:0 8px;color:#5c6c85;">→</div>
+        <div style="flex:1;padding:8px;background:#f0faf4;border-radius:6px;text-align:center;">
+          <div style="font-weight:700;margin-bottom:4px;">3. Review</div>
+          <div style="color:#5c6c85;">UI shows parsed rules in a preview table. User assigns to a client + confirms rule type.</div>
+        </div>
+        <div style="display:flex;align-items:center;padding:0 8px;color:#5c6c85;">→</div>
+        <div style="flex:1;padding:8px;background:#f0faf4;border-radius:6px;text-align:center;">
+          <div style="font-weight:700;margin-bottom:4px;">4. Save</div>
+          <div style="color:#5c6c85;">Confirmed rules inserted into DB with condition_raw / action_raw populated.</div>
+        </div>
+      </div>
+      <div style="margin-top:8px;padding:6px 10px;background:#f5f8fe;border-radius:5px;font-size:10px;color:#5c6c85;font-family:monospace;">
+        POST /api/import/parse  →  POST /api/import/confirm
+      </div>
+    </div>
+  </div>
+
+  <!-- Workflow 2: Browse & Copy -->
+  <div class="mockup">
+    <div class="mockup-header" style="background:#0b5cab;color:#fff;">📚 Workflow 2 — Browse Library & Copy Rules to Client</div>
+    <div class="mockup-body">
+      <div style="display:flex;gap:0;align-items:stretch;font-size:11px;">
+        <div style="flex:1;padding:8px;background:#f0f6ff;border-radius:6px;text-align:center;">
+          <div style="font-weight:700;margin-bottom:4px;">1. Browse</div>
+          <div style="color:#5c6c85;">Search/filter rules across all clients by type, tool, keyword, or source client.</div>
+        </div>
+        <div style="display:flex;align-items:center;padding:0 8px;color:#5c6c85;">→</div>
+        <div style="flex:1;padding:8px;background:#f0f6ff;border-radius:6px;text-align:center;">
+          <div style="font-weight:700;margin-bottom:4px;">2. Preview</div>
+          <div style="color:#5c6c85;">Click a rule to see full DRL, description, which clients use it, and history.</div>
+        </div>
+        <div style="display:flex;align-items:center;padding:0 8px;color:#5c6c85;">→</div>
+        <div style="flex:1;padding:8px;background:#f0f6ff;border-radius:6px;text-align:center;">
+          <div style="font-weight:700;margin-bottom:4px;">3. Copy</div>
+          <div style="color:#5c6c85;">"Copy to Client" → picks target client, rule is duplicated and renamed (e.g. ClientCode_NS_1).</div>
+        </div>
+        <div style="display:flex;align-items:center;padding:0 8px;color:#5c6c85;">→</div>
+        <div style="flex:1;padding:8px;background:#f0f6ff;border-radius:6px;text-align:center;">
+          <div style="font-weight:700;margin-bottom:4px;">4. Adapt</div>
+          <div style="color:#5c6c85;">Open copied rule in editor, adjust conditions/actions for new client's environment.</div>
+        </div>
+      </div>
+      <div style="margin-top:8px;padding:6px 10px;background:#f5f8fe;border-radius:5px;font-size:10px;color:#5c6c85;font-family:monospace;">
+        GET /api/rules?search=&amp;tool=&amp;rule_type=&amp;client=  →  POST /api/rules/{id}/copy
+      </div>
+    </div>
+  </div>
+
+  <!-- Workflow 3: Deploy -->
+  <div class="mockup">
+    <div class="mockup-header" style="background:#a25d00;color:#fff;">📦 Workflow 3 — Create Deployment & Export DRL Bundle</div>
+    <div class="mockup-body">
+      <div style="display:flex;gap:0;align-items:stretch;font-size:11px;">
+        <div style="flex:1;padding:8px;background:#fffaf0;border-radius:6px;text-align:center;">
+          <div style="font-weight:700;margin-bottom:4px;">1. Create</div>
+          <div style="color:#5c6c85;">Create deployment for a client with a version tag (e.g. v1.2) and release notes.</div>
+        </div>
+        <div style="display:flex;align-items:center;padding:0 8px;color:#5c6c85;">→</div>
+        <div style="flex:1;padding:8px;background:#fffaf0;border-radius:6px;text-align:center;">
+          <div style="font-weight:700;margin-bottom:4px;">2. Snapshot</div>
+          <div style="color:#5c6c85;">All enabled rules for the client are snapshotted into deployment_rule_snapshots.</div>
+        </div>
+        <div style="display:flex;align-items:center;padding:0 8px;color:#5c6c85;">→</div>
+        <div style="flex:1;padding:8px;background:#fffaf0;border-radius:6px;text-align:center;">
+          <div style="font-weight:700;margin-bottom:4px;">3. Generate</div>
+          <div style="color:#5c6c85;">DRL Generator builds one .drl file per rule type from the snapshot. Includes package, imports, functions, rules in order.</div>
+        </div>
+        <div style="display:flex;align-items:center;padding:0 8px;color:#5c6c85;">→</div>
+        <div style="flex:1;padding:8px;background:#fffaf0;border-radius:6px;text-align:center;">
+          <div style="font-weight:700;margin-bottom:4px;">4. Download</div>
+          <div style="color:#5c6c85;">ZIP file downloaded: noise_suppression.drl, alert_classifier.drl, issue_correlation.drl, incident_rules.drl, recommendation.drl</div>
+        </div>
+      </div>
+      <div style="margin-top:8px;padding:6px 10px;background:#f5f8fe;border-radius:5px;font-size:10px;color:#5c6c85;font-family:monospace;">
+        POST /api/deployments  →  GET /api/deployments/{id}/export  →  .zip download
+      </div>
+    </div>
+  </div>
+
+  <!-- Project structure -->
+  <div class="mockup">
+    <div class="mockup-header">Project Folder Structure</div>
+    <div class="mockup-body">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:11px;font-family:monospace;">
+        <div>
+          <div style="font-weight:700;margin-bottom:6px;font-family:sans-serif;color:#0c3a70;">Backend</div>
+          <div style="color:#5c6c85;">rules-manager/</div>
+          <div style="color:#5c6c85;">├── backend/</div>
+          <div>│   ├── <span style="color:#0b5cab;">main.py</span></div>
+          <div>│   ├── <span style="color:#0b5cab;">models.py</span> <span style="color:#5c6c85;">(SQLAlchemy)</span></div>
+          <div>│   ├── <span style="color:#0b5cab;">schemas.py</span> <span style="color:#5c6c85;">(Pydantic)</span></div>
+          <div>│   ├── routers/</div>
+          <div>│   │   ├── clients.py</div>
+          <div>│   │   ├── rules.py</div>
+          <div>│   │   ├── deployments.py</div>
+          <div>│   │   └── import_drl.py</div>
+          <div>│   ├── services/</div>
+          <div>│   │   ├── drl_parser.py</div>
+          <div>│   │   └── drl_generator.py</div>
+          <div>│   ├── seed_data.py</div>
+          <div>│   └── requirements.txt</div>
+        </div>
+        <div>
+          <div style="font-weight:700;margin-bottom:6px;font-family:sans-serif;color:#0c3a70;">Frontend + Infra</div>
+          <div style="color:#5c6c85;">rules-manager/</div>
+          <div style="color:#5c6c85;">├── frontend/</div>
+          <div>│   ├── <span style="color:#0b5cab;">src/</span></div>
+          <div>│   │   ├── pages/ <span style="color:#5c6c85;">(Rules, Clients, Deploy)</span></div>
+          <div>│   │   ├── components/ <span style="color:#5c6c85;">(builder, preview)</span></div>
+          <div>│   │   └── api/ <span style="color:#5c6c85;">(API client)</span></div>
+          <div>│   ├── package.json</div>
+          <div>│   └── vite.config.ts</div>
+          <div style="color:#5c6c85;">├── docker-compose.yml</div>
+          <div style="color:#5c6c85;">├── Dockerfile.backend</div>
+          <div style="color:#5c6c85;">├── Dockerfile.frontend</div>
+          <div style="color:#5c6c85;">└── data/ <span style="color:#5c6c85;">(existing .drl files)</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
