@@ -64,7 +64,7 @@ export function ImportDrl() {
       </div>
 
       {/* Assignment selectors */}
-      <div style={{ background: '#fff', border: '1px solid var(--line)', borderRadius: 10, padding: 16, marginBottom: 16 }}>
+      <div className="glass-card" style={{ padding: 16, marginBottom: 16 }}>
         <p style={{ margin: '0 0 12px', fontWeight: 600 }}>Assign imported rules to:</p>
         <div className="form-grid">
           <div className="form-row">
@@ -89,14 +89,16 @@ export function ImportDrl() {
         onDrop={e => { e.preventDefault(); setDragging(false); const f = e.dataTransfer.files[0]; if (f) handleFile(f) }}
         onClick={() => fileRef.current?.click()}
         style={{
-          border: `2px dashed ${dragging ? 'var(--accent)' : 'var(--line)'}`,
-          borderRadius: 10,
-          padding: '40px 20px',
+          border: `2px dashed ${dragging ? 'var(--accent)' : 'rgba(124,58,237,0.25)'}`,
+          borderRadius: 16,
+          padding: '44px 20px',
           textAlign: 'center',
           cursor: 'pointer',
-          background: dragging ? '#f0f6ff' : '#fafcff',
+          background: dragging ? 'rgba(124,58,237,0.06)' : 'rgba(255,255,255,0.55)',
+          backdropFilter: 'blur(12px)',
           marginBottom: 16,
-          transition: 'all 0.15s',
+          transition: 'all 0.2s',
+          boxShadow: dragging ? '0 0 0 3px var(--accent-dim)' : 'none',
         }}
       >
         <p style={{ margin: 0, fontSize: 16, color: 'var(--muted)' }}>
@@ -115,7 +117,7 @@ export function ImportDrl() {
 
       {/* Preview table */}
       {preview && (
-        <div style={{ background: '#fff', border: '1px solid var(--line)', borderRadius: 10, overflow: 'hidden' }}>
+        <div className="glass-card" style={{ overflow: 'hidden' }}>
           <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--line)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
               <strong>{preview.filename}</strong>

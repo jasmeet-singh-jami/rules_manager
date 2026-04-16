@@ -69,7 +69,7 @@ export function Deployments() {
       </div>
 
       {showForm && (
-        <div style={{ background: '#fff', border: '1px solid var(--line)', borderRadius: 10, padding: 20, marginBottom: 16 }}>
+        <div className="glass-card" style={{ padding: 20, marginBottom: 16 }}>
           <h3 style={{ margin: '0 0 14px' }}>Create Deployment</h3>
           {error && <p className="error-msg">{error}</p>}
           <div className="form-grid">
@@ -95,7 +95,7 @@ export function Deployments() {
 
       {loading && <p className="muted">Loading…</p>}
 
-      <div style={{ background: '#fff', borderRadius: 10, border: '1px solid var(--line)', overflow: 'hidden' }}>
+      <div className="glass-card" style={{ overflow: 'hidden' }}>
         <table>
           <thead>
             <tr><th>Version</th><th>Status</th><th>Notes</th><th>Created</th><th>Export</th></tr>

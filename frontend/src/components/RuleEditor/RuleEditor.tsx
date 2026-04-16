@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Rule, RuleType, Client, createRule, updateRule } from '../../api/client'
 import { DrlPreview } from '../DrlPreview'
 
@@ -69,7 +70,7 @@ export function RuleEditor({ rule, ruleTypes, clients, defaultClientId, defaultR
     }
   }
 
-  return (
+  return createPortal(
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" style={{ width: 1000 }} onClick={e => e.stopPropagation()}>
         <h2>{isNew ? 'New Rule' : `Edit: ${rule.name}`}</h2>
@@ -77,7 +78,7 @@ export function RuleEditor({ rule, ruleTypes, clients, defaultClientId, defaultR
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
           {/* Left: form fields */}
-          <div>
+          <div style={{ minWidth: 0 }}>
             <div className="form-grid" style={{ marginBottom: 14 }}>
               <div className="form-row">
                 <label htmlFor="re-client">Client</label>
@@ -141,13 +142,15 @@ export function RuleEditor({ rule, ruleTypes, clients, defaultClientId, defaultR
             </div>
           </div>
 
-          {/* Right: DRL preview */}
-          <DrlPreview
-            ruleName={form.name}
-            conditionRaw={form.condition_raw}
-            actionRaw={form.action_raw}
-            ruleTypeName={activeRuleType?.name}
-          />
+          {/* Right: DRL preview — sticky so it stays visible while scrolling the form */}
+          <div style={{ minWidth: 0, position: 'sticky', top: 0, alignSelf: 'flex-start' }}>
+            <DrlPreview
+              ruleName={form.name}
+              conditionRaw={form.condition_raw}
+              actionRaw={form.action_raw}
+              ruleTypeName={activeRuleType?.name}
+            />
+          </div>
         </div>
 
         <div className="form-actions">
@@ -157,6 +160,7 @@ export function RuleEditor({ rule, ruleTypes, clients, defaultClientId, defaultR
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }

@@ -145,6 +145,17 @@ export const deleteRule = (id: string) =>
 export const copyRule = (id: string, target_client_id: string) =>
   request<Rule>(`/rules/${id}/copy`, { method: 'POST', body: JSON.stringify({ target_client_id }) })
 
+export const exportRules = (rule_ids: string[]): Promise<Response> => {
+  const token = localStorage.getItem('auth_token')
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+  if (token) headers['Authorization'] = `Bearer ${token}`
+  return fetch(`${BASE}/rules/export`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ rule_ids }),
+  })
+}
+
 // ── Deployments ───────────────────────────────────────────────────────────
 
 export const getDeployments = (client_id: string) =>

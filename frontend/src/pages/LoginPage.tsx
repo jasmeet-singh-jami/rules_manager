@@ -27,37 +27,52 @@ export function LoginPage() {
   }
 
   return (
-    <div style={{ maxWidth: 360, margin: '80px auto', padding: '0 16px' }}>
-      <h2 style={{ marginBottom: 24 }}>Sign in</h2>
-      {error && <p className="error-msg">{error}</p>}
-      <form onSubmit={handleSubmit}>
-        <div className="form-row">
-          <label htmlFor="username">Username</label>
-          <input
-            id="username"
-            value={username}
-            onChange={e => setUsername(e.target.value)}
-            required
-            autoFocus
-          />
+    <div className="auth-page">
+      <div className="auth-bg-glow" />
+      <div className="auth-bg-grid" />
+      <div className="auth-card">
+        <div className="auth-brand">
+          <span className="auth-brand-icon">⚡</span>
+          <span className="auth-brand-name">Rules Manager</span>
         </div>
-        <div className="form-row">
-          <label htmlFor="password">Password</label>
-          <input
-            id="password"
-            type="password"
-            value={password}
-            onChange={e => setPassword(e.target.value)}
-            required
-          />
-        </div>
-        <button className="btn-primary" type="submit" disabled={loading} style={{ width: '100%', marginTop: 8 }}>
-          {loading ? 'Signing in\u2026' : 'Sign in'}
-        </button>
-      </form>
-      <p style={{ marginTop: 16, textAlign: 'center', fontSize: 13 }}>
-        No account? <Link to="/register">Register</Link>
-      </p>
+        <h2 className="auth-title">Welcome back</h2>
+        <p className="auth-subtitle">Sign in to manage your rule library</p>
+        {error && <p className="error-msg">{error}</p>}
+        <form onSubmit={handleSubmit}>
+          <div className="form-row">
+            <label htmlFor="username">Username</label>
+            <input
+              id="username"
+              value={username}
+              onChange={e => setUsername(e.target.value)}
+              required
+              autoFocus
+            />
+          </div>
+          <div className="form-row">
+            <label htmlFor="password">Password</label>
+            <input
+              id="password"
+              type="password"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              required
+            />
+          </div>
+          <button
+            className="btn-primary"
+            type="submit"
+            disabled={loading}
+            style={{ width: '100%', marginTop: 8, padding: '11px 16px', fontSize: 14 }}
+          >
+            {loading ? 'Signing in…' : 'Sign in'}
+          </button>
+        </form>
+        <p className="auth-footer">
+          No account?{' '}
+          <Link to="/register" className="auth-link">Register</Link>
+        </p>
+      </div>
     </div>
   )
 }

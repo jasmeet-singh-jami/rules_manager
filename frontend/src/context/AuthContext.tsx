@@ -7,6 +7,7 @@ interface AuthContextValue {
   clientAccess: string[]
   login: (token: string, user: AuthUser, clientAccess: string[]) => void
   logout: () => void
+  addClientAccess: (clientId: string) => void
   hasEditAccess: (clientId: string) => boolean
   isAdmin: boolean
 }
@@ -35,6 +36,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setClientAccess(newClientAccess)
   }
 
+  function addClientAccess(clientId: string) {
+    setClientAccess(prev => {
+      if (prev.includes(clientId)) return prev
+      const updated = [...prev, clientId]
+      localStorage.setItem('auth_client_access', JSON.stringify(updated))
+      return updated
+    })
+  }
+
   function logout() {
     localStorage.removeItem('auth_token')
     localStorage.removeItem('auth_user')
@@ -49,10 +59,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return clientAccess.includes(clientId)
   }
 
-  const isAdmin = user?.role === 'admin' ?? false
+  const isAdmin = user?.role === 'admin'
 
   return (
-    <AuthContext.Provider value={{ user, token, clientAccess, login, logout, hasEditAccess, isAdmin }}>
+    <AuthContext.Provider value={{ user, token, clientAccess, login, logout, addClientAccess, hasEditAccess, isAdmin }}>
       {children}
     </AuthContext.Provider>
   )

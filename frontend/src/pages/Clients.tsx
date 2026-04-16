@@ -7,7 +7,7 @@ interface FormState { code: string; name: string; description: string }
 const empty: FormState = { code: '', name: '', description: '' }
 
 export function Clients() {
-  const { hasEditAccess } = useAuth()
+  const { hasEditAccess, addClientAccess, isAdmin } = useAuth()
   const [clients, setClients] = useState<Client[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -36,6 +36,7 @@ export function Clients() {
       if (modal === 'new') {
         const c = await createClient(form)
         setClients(prev => [...prev, c])
+        if (!isAdmin) addClientAccess(c.id)
       } else if (modal) {
         const c = await updateClient((modal as Client).id, { name: form.name, description: form.description })
         setClients(prev => prev.map(x => x.id === c.id ? c : x))
@@ -63,7 +64,7 @@ export function Clients() {
 
       {loading && <p className="muted">Loading…</p>}
 
-      <div style={{ background: '#fff', borderRadius: 10, border: '1px solid var(--line)', overflow: 'hidden' }}>
+      <div className="glass-card" style={{ overflow: 'hidden' }}>
         <table>
           <thead>
             <tr><th>Code</th><th>Name</th><th>Description</th><th>Actions</th></tr>
