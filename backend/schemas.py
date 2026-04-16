@@ -96,6 +96,10 @@ class RuleCopyRequest(BaseModel):
     target_client_id: UUID
 
 
+class RuleExportRequest(BaseModel):
+    rule_ids: list[UUID]
+
+
 # ── Deployments ───────────────────────────────────────────────────────────────
 
 class DeploymentCreate(BaseModel):
@@ -182,3 +186,12 @@ class UserWithClientsOut(BaseModel):
     username: str
     role: str
     client_ids: list[UUID]
+
+
+class ChangePasswordRequest(BaseModel):
+    new_password: str
+    confirm_password: str
+
+
+class AdminResetPasswordRequest(BaseModel):
+    new_password: str
