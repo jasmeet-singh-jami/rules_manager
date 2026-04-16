@@ -6,8 +6,9 @@ from sqlalchemy.exc import IntegrityError
 
 from database import get_db
 from models import User, UserClientAccess
-from schemas import UserWithClientsOut
+from schemas import UserWithClientsOut, AdminResetPasswordRequest
 from auth_deps import require_admin
+from security import hash_password
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -81,3 +82,23 @@ async def revoke_client_access(
     if access:
         await db.delete(access)
         await db.commit()
+
+
+@router.patch(
+    "/users/{user_id}/password",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def reset_user_password(
+    user_id: UUID,
+    body: AdminResetPasswordRequest,
+    _: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    if len(body.new_password) < 8:
+        raise HTTPException(status_code=422, detail="Password must be at least 8 characters")
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    user.password_hash = hash_password(body.new_password)
+    await db.commit()

@@ -51,3 +51,53 @@ async def test_grant_access_nonexistent_user(authed_client):
         f"/api/admin/users/00000000-0000-0000-0000-000000000001/clients/{c['id']}"
     )
     assert response.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_admin_reset_password_succeeds(authed_client, client):
+    reg = await client.post("/api/auth/register", json={"username": "resetme", "password": "oldpassword"})
+    user_id = reg.json()["user"]["id"]
+    response = await authed_client.patch(
+        f"/api/admin/users/{user_id}/password",
+        json={"new_password": "newpassword1"},
+    )
+    assert response.status_code == 204
+    # Old password no longer works
+    old_login = await client.post("/api/auth/login", json={"username": "resetme", "password": "oldpassword"})
+    assert old_login.status_code == 401
+    # New password works
+    new_login = await client.post("/api/auth/login", json={"username": "resetme", "password": "newpassword1"})
+    assert new_login.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_admin_reset_password_nonexistent_user_returns_404(authed_client):
+    response = await authed_client.patch(
+        "/api/admin/users/00000000-0000-0000-0000-000000000001/password",
+        json={"new_password": "newpassword1"},
+    )
+    assert response.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_admin_reset_password_requires_admin(client):
+    reg = await client.post("/api/auth/register", json={"username": "notadmin3", "password": "oldpassword"})
+    user_id = reg.json()["user"]["id"]
+    token = reg.json()["token"]
+    response = await client.patch(
+        f"/api/admin/users/{user_id}/password",
+        json={"new_password": "newpassword1"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert response.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_admin_reset_password_too_short_returns_422(authed_client, client):
+    reg = await client.post("/api/auth/register", json={"username": "resetshort", "password": "oldpassword"})
+    user_id = reg.json()["user"]["id"]
+    response = await authed_client.patch(
+        f"/api/admin/users/{user_id}/password",
+        json={"new_password": "short"},
+    )
+    assert response.status_code == 422
