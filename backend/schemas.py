@@ -172,6 +172,7 @@ class TokenOut(BaseModel):
     token: str
     user: UserOut
     client_access_ids: list[UUID]
+    must_change_password: bool
 
 
 class MeOut(BaseModel):
@@ -179,6 +180,7 @@ class MeOut(BaseModel):
     username: str
     role: str
     client_access_ids: list[UUID]
+    must_change_password: bool
 
 
 class UserWithClientsOut(BaseModel):
@@ -189,6 +191,7 @@ class UserWithClientsOut(BaseModel):
 
 
 class ChangePasswordRequest(BaseModel):
+    current_password: str
     new_password: str
     confirm_password: str
 
