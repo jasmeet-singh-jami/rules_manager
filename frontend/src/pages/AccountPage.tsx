@@ -1,7 +1,10 @@
 import { useState, FormEvent } from 'react'
 import { changePassword } from '../api/auth'
+import { useAuth } from '../context/AuthContext'
 
 export function AccountPage() {
+  const { mustChangePassword, clearMustChangePassword } = useAuth()
+  const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [error, setError] = useState('')
@@ -22,12 +25,19 @@ export function AccountPage() {
     }
     setLoading(true)
     try {
-      await changePassword(newPassword, confirmPassword)
+      await changePassword(currentPassword, newPassword, confirmPassword)
+      clearMustChangePassword()
       setSuccess(true)
+      setCurrentPassword('')
       setNewPassword('')
       setConfirmPassword('')
-    } catch {
-      setError('Failed to change password')
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : ''
+      if (msg.includes('400')) {
+        setError('Current password is incorrect')
+      } else {
+        setError('Failed to change password')
+      }
     } finally {
       setLoading(false)
     }
@@ -36,6 +46,11 @@ export function AccountPage() {
   return (
     <div style={{ maxWidth: 420, margin: '40px auto' }}>
       <h2 style={{ marginBottom: 20 }}>Account</h2>
+      {mustChangePassword && (
+        <div className="glass-card" style={{ padding: '12px 20px', marginBottom: 16, borderLeft: '3px solid var(--warn, #f59e0b)' }}>
+          <p style={{ margin: 0, fontSize: 14 }}>You must set a new password before continuing.</p>
+        </div>
+      )}
       <div className="glass-card" style={{ padding: 28 }}>
         <h3 style={{ marginBottom: 20, fontSize: 16 }}>Change Password</h3>
         {success && (
@@ -44,6 +59,17 @@ export function AccountPage() {
         {error && <p className="error-msg" style={{ marginBottom: 12 }}>{error}</p>}
         <form onSubmit={handleSubmit}>
           <div className="form-row">
+            <label htmlFor="current-password">Current Password</label>
+            <input
+              id="current-password"
+              type="password"
+              value={currentPassword}
+              onChange={e => setCurrentPassword(e.target.value)}
+              required
+              autoFocus
+            />
+          </div>
+          <div className="form-row">
             <label htmlFor="new-password">New Password</label>
             <input
               id="new-password"
@@ -51,7 +77,6 @@ export function AccountPage() {
               value={newPassword}
               onChange={e => setNewPassword(e.target.value)}
               required
-              autoFocus
             />
           </div>
           <div className="form-row">
