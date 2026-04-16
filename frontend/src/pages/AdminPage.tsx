@@ -40,6 +40,9 @@ export function AdminPage() {
   const [clients, setClients] = useState<Client[]>([])
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
+  const [resetPasswords, setResetPasswords] = useState<Record<string, string>>({})
+  const [resetStatus, setResetStatus] = useState<Record<string, 'ok' | 'error' | ''>>({})
+
 
   useEffect(() => {
     Promise.all([listUsers(token), getClients()])
@@ -74,6 +77,26 @@ export function AdminPage() {
     }
   }
 
+  async function handleResetPassword(userId: string) {
+    const pw = resetPasswords[userId] ?? ''
+    setResetStatus(prev => ({ ...prev, [userId]: '' }))
+    try {
+      const res = await fetch(`/api/admin/users/${userId}/password`, {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ new_password: pw }),
+      })
+      if (!res.ok) throw new Error()
+      setResetStatus(prev => ({ ...prev, [userId]: 'ok' }))
+      setResetPasswords(prev => ({ ...prev, [userId]: '' }))
+    } catch {
+      setResetStatus(prev => ({ ...prev, [userId]: 'error' }))
+    }
+  }
+
   if (loading) return <p className="muted" style={{ margin: '24px 0' }}>Loading…</p>
   if (error) return <p className="error-msg" style={{ margin: '24px 0' }}>{error}</p>
 
@@ -82,7 +105,7 @@ export function AdminPage() {
   return (
     <>
       <h2 style={{ margin: '20px 0 16px' }}>User Management</h2>
-      <div style={{ background: '#fff', borderRadius: 10, border: '1px solid var(--line)', overflow: 'hidden' }}>
+      <div className="glass-card" style={{ overflow: 'hidden' }}>
         <table>
           <thead>
             <tr>
@@ -90,6 +113,7 @@ export function AdminPage() {
               <th>Role</th>
               <th>Client Access</th>
               <th>Grant Access</th>
+              <th>Reset Password</th>
             </tr>
           </thead>
           <tbody>
@@ -102,13 +126,13 @@ export function AdminPage() {
                     {u.client_ids.length === 0 && <span className="muted">None</span>}
                     {u.client_ids.map(cid => (
                       <span key={cid} style={{
-                        background: '#e8f0fe', borderRadius: 4,
-                        padding: '2px 8px', fontSize: 12, display: 'flex', gap: 4, alignItems: 'center'
+                        background: 'var(--accent-dim)', border: '1px solid rgba(77,142,248,0.25)', borderRadius: 4,
+                        padding: '2px 8px', fontSize: 12, display: 'flex', gap: 4, alignItems: 'center', color: 'var(--accent)'
                       }}>
                         {clientMap[cid]?.code ?? cid.slice(0, 8)}
                         <button
                           onClick={() => handleRevoke(u.id, cid)}
-                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#c00', padding: 0, fontSize: 14, lineHeight: 1 }}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--danger)', padding: 0, fontSize: 14, lineHeight: 1 }}
                           title="Revoke access"
                         >×</button>
                       </span>
@@ -130,6 +154,33 @@ export function AdminPage() {
                         <option key={c.id} value={c.id}>{c.code} — {c.name}</option>
                       ))}
                   </select>
+                </td>
+                <td>
+                  <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                    <input
+                      type="password"
+                      placeholder="New password"
+                      value={resetPasswords[u.id] ?? ''}
+                      onChange={e =>
+                        setResetPasswords(prev => ({ ...prev, [u.id]: e.target.value }))
+                      }
+                      style={{ fontSize: 12, padding: '3px 6px', width: 140 }}
+                    />
+                    <button
+                      className="btn-primary"
+                      onClick={() => handleResetPassword(u.id)}
+                      disabled={!resetPasswords[u.id]}
+                      style={{ fontSize: 12, padding: '3px 10px' }}
+                    >
+                      Reset
+                    </button>
+                    {resetStatus[u.id] === 'ok' && (
+                      <span style={{ color: 'var(--ok)', fontSize: 12 }}>✓ Reset</span>
+                    )}
+                    {resetStatus[u.id] === 'error' && (
+                      <span style={{ color: 'var(--danger)', fontSize: 12 }}>Failed</span>
+                    )}
+                  </div>
                 </td>
               </tr>
             ))}
