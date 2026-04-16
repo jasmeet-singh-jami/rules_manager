@@ -80,14 +80,12 @@ async def test_change_password_succeeds(client):
     token = reg.json()["token"]
     response = await client.patch(
         "/api/auth/me/password",
-        json={"new_password": "newpassword1", "confirm_password": "newpassword1"},
+        json={"current_password": "oldpassword", "new_password": "newpassword1", "confirm_password": "newpassword1"},
         headers={"Authorization": f"Bearer {token}"},
     )
     assert response.status_code == 204
-    # Old password no longer works
     old_login = await client.post("/api/auth/login", json={"username": "pwchange", "password": "oldpassword"})
     assert old_login.status_code == 401
-    # New password works
     new_login = await client.post("/api/auth/login", json={"username": "pwchange", "password": "newpassword1"})
     assert new_login.status_code == 200
 
@@ -98,7 +96,7 @@ async def test_change_password_mismatch_returns_422(client):
     token = reg.json()["token"]
     response = await client.patch(
         "/api/auth/me/password",
-        json={"new_password": "newpassword1", "confirm_password": "differentpassword"},
+        json={"current_password": "oldpassword", "new_password": "newpassword1", "confirm_password": "differentpassword"},
         headers={"Authorization": f"Bearer {token}"},
     )
     assert response.status_code == 422
@@ -110,7 +108,7 @@ async def test_change_password_too_short_returns_422(client):
     token = reg.json()["token"]
     response = await client.patch(
         "/api/auth/me/password",
-        json={"new_password": "short", "confirm_password": "short"},
+        json={"current_password": "oldpassword", "new_password": "short", "confirm_password": "short"},
         headers={"Authorization": f"Bearer {token}"},
     )
     assert response.status_code == 422
@@ -120,6 +118,74 @@ async def test_change_password_too_short_returns_422(client):
 async def test_change_password_requires_auth(client):
     response = await client.patch(
         "/api/auth/me/password",
-        json={"new_password": "newpassword1", "confirm_password": "newpassword1"},
+        json={"current_password": "x", "new_password": "newpassword1", "confirm_password": "newpassword1"},
     )
     assert response.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_change_password_wrong_current_returns_400(client):
+    reg = await client.post("/api/auth/register", json={"username": "wrongcurrent", "password": "oldpassword"})
+    token = reg.json()["token"]
+    response = await client.patch(
+        "/api/auth/me/password",
+        json={"current_password": "WRONG", "new_password": "newpassword1", "confirm_password": "newpassword1"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert response.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_change_password_invalidates_other_tokens(client):
+    reg = await client.post("/api/auth/register", json={"username": "invalidatetest", "password": "oldpassword"})
+    token_a = reg.json()["token"]
+    login = await client.post("/api/auth/login", json={"username": "invalidatetest", "password": "oldpassword"})
+    token_b = login.json()["token"]
+
+    await client.patch(
+        "/api/auth/me/password",
+        json={"current_password": "oldpassword", "new_password": "newpassword1", "confirm_password": "newpassword1"},
+        headers={"Authorization": f"Bearer {token_a}"},
+    )
+    response = await client.get("/api/auth/me", headers={"Authorization": f"Bearer {token_b}"})
+    assert response.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_change_password_clears_must_change_password(client, db):
+    from sqlalchemy import select as sa_select
+    from models import User as UserModel
+
+    reg = await client.post("/api/auth/register", json={"username": "mustclear_user", "password": "oldpassword"})
+    token = reg.json()["token"]
+
+    result = await db.execute(sa_select(UserModel).where(UserModel.username == "mustclear_user"))
+    user_row = result.scalar_one()
+    user_row.must_change_password = True
+    await db.commit()
+
+    me = await client.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"})
+    assert me.json()["must_change_password"] is True
+
+    await client.patch(
+        "/api/auth/me/password",
+        json={"current_password": "oldpassword", "new_password": "newpassword1", "confirm_password": "newpassword1"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    me2 = await client.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"})
+    assert me2.json()["must_change_password"] is False
+
+
+@pytest.mark.asyncio
+async def test_login_returns_must_change_password(client):
+    reg = await client.post("/api/auth/register", json={"username": "mustchange_check", "password": "pw123456"})
+    assert reg.json()["must_change_password"] is False
+
+
+@pytest.mark.asyncio
+async def test_me_returns_must_change_password(client):
+    reg = await client.post("/api/auth/register", json={"username": "me_mustchange", "password": "pw123456"})
+    token = reg.json()["token"]
+    me = await client.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"})
+    assert me.json()["must_change_password"] is False
