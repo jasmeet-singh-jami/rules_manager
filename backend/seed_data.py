@@ -1,9 +1,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from models import RuleType, User
-from passlib.context import CryptContext
-
-_pwd_ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
+from security import hash_password
 
 RULE_TYPES = [
     {
@@ -190,6 +188,6 @@ async def seed_admin_user(session: AsyncSession) -> None:
     if result.scalar_one_or_none() is None:
         session.add(User(
             username="admin",
-            password_hash=_pwd_ctx.hash("admin"),
+            password_hash=hash_password("admin"),
             role="admin",
         ))

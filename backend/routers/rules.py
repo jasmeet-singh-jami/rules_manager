@@ -1,13 +1,14 @@
 from uuid import UUID
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_
 
 from database import get_db
 from models import Rule, Client, RuleType, User
-from schemas import RuleCreate, RuleUpdate, RuleOut, RuleCopyRequest
+from schemas import RuleCreate, RuleUpdate, RuleOut, RuleCopyRequest, RuleExportRequest
 from auth_deps import get_current_user, check_client_access
+from services.drl_generator import generate_drl_bundle
 
 router = APIRouter(tags=["rules"])
 
@@ -100,6 +101,63 @@ async def delete_rule(
     await check_client_access(current_user, rule.client_id, db)
     await db.delete(rule)
     await db.commit()
+
+
+@router.post("/rules/export")
+async def export_rules(
+    body: RuleExportRequest,
+    _: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    if not body.rule_ids:
+        raise HTTPException(status_code=400, detail="No rule IDs provided")
+
+    rules_result = await db.execute(
+        select(Rule).where(Rule.id.in_(body.rule_ids))
+    )
+    rules = rules_result.scalars().all()
+
+    # Group rules by rule_type_id
+    rt_id_to_rules: dict[str, list[Rule]] = {}
+    for rule in rules:
+        key = str(rule.rule_type_id)
+        rt_id_to_rules.setdefault(key, []).append(rule)
+
+    # Fetch rule types in pipeline_stage order
+    rt_result = await db.execute(
+        select(RuleType)
+        .where(RuleType.id.in_([r.rule_type_id for r in rules]))
+        .order_by(RuleType.pipeline_stage)
+    )
+    rule_types = rt_result.scalars().all()
+
+    rt_rules: list[tuple[dict, list[dict]]] = []
+    for rt in rule_types:
+        rt_dict = {
+            "id": str(rt.id),
+            "slug": rt.slug,
+            "name": rt.name,
+            "pipeline_stage": rt.pipeline_stage,
+            "drl_package": rt.drl_package,
+            "drl_imports": rt.drl_imports,
+            "drl_functions": rt.drl_functions,
+        }
+        rule_dicts = [
+            {
+                "name": r.name,
+                "condition_raw": r.condition_raw or "",
+                "action_raw": r.action_raw or "",
+            }
+            for r in rt_id_to_rules.get(str(rt.id), [])
+        ]
+        rt_rules.append((rt_dict, rule_dicts))
+
+    zip_bytes = generate_drl_bundle(rt_rules)
+    return Response(
+        content=zip_bytes,
+        media_type="application/zip",
+        headers={"Content-Disposition": 'attachment; filename="rules_export.zip"'},
+    )
 
 
 @router.post("/rules/{rule_id}/copy", response_model=RuleOut, status_code=status.HTTP_201_CREATED)
