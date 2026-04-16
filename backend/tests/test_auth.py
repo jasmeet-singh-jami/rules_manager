@@ -72,3 +72,54 @@ async def test_me_returns_user_info(client):
     assert data["username"] == "frank"
     assert data["role"] == "contributor"
     assert "client_access_ids" in data
+
+
+@pytest.mark.asyncio
+async def test_change_password_succeeds(client):
+    reg = await client.post("/api/auth/register", json={"username": "pwchange", "password": "oldpassword"})
+    token = reg.json()["token"]
+    response = await client.patch(
+        "/api/auth/me/password",
+        json={"new_password": "newpassword1", "confirm_password": "newpassword1"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert response.status_code == 204
+    # Old password no longer works
+    old_login = await client.post("/api/auth/login", json={"username": "pwchange", "password": "oldpassword"})
+    assert old_login.status_code == 401
+    # New password works
+    new_login = await client.post("/api/auth/login", json={"username": "pwchange", "password": "newpassword1"})
+    assert new_login.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_change_password_mismatch_returns_422(client):
+    reg = await client.post("/api/auth/register", json={"username": "pwmismatch", "password": "oldpassword"})
+    token = reg.json()["token"]
+    response = await client.patch(
+        "/api/auth/me/password",
+        json={"new_password": "newpassword1", "confirm_password": "differentpassword"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert response.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_change_password_too_short_returns_422(client):
+    reg = await client.post("/api/auth/register", json={"username": "pwshort", "password": "oldpassword"})
+    token = reg.json()["token"]
+    response = await client.patch(
+        "/api/auth/me/password",
+        json={"new_password": "short", "confirm_password": "short"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert response.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_change_password_requires_auth(client):
+    response = await client.patch(
+        "/api/auth/me/password",
+        json={"new_password": "newpassword1", "confirm_password": "newpassword1"},
+    )
+    assert response.status_code == 401
