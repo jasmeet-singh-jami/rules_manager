@@ -77,6 +77,7 @@ class Deployment(Base):
     status = Column(DeploymentStatus, nullable=False, default="draft")
     notes = Column(Text, nullable=True)
     created_at = Column(TIMESTAMP(timezone=True), default=utcnow, nullable=False)
+    rule_types_snapshot = Column(JSONB, nullable=True)
 
     client = relationship("Client", back_populates="deployments")
     snapshots = relationship("DeploymentRuleSnapshot", back_populates="deployment", cascade="all, delete-orphan")
@@ -90,6 +91,7 @@ class DeploymentRuleSnapshot(Base):
     rule_id = Column(UUID(as_uuid=True), ForeignKey("rules.id", ondelete="SET NULL"), nullable=True)
     rule_snapshot = Column(JSONB, nullable=False)
     drl_block = Column(Text, nullable=False)
+    rule_type_snapshot = Column(JSONB, nullable=True)
 
     deployment = relationship("Deployment", back_populates="snapshots")
     rule = relationship("Rule", back_populates="snapshots")
