@@ -85,3 +85,42 @@ async def test_disabled_rules_not_exported(authed_client):
     with zipfile.ZipFile(buf) as zf:
         content = zf.read("alert_classifier.drl").decode("utf-8")
     assert "DisabledRule" not in content
+
+
+@pytest.mark.asyncio
+async def test_create_deployment_stores_rule_type_snapshot(authed_client, db):
+    from sqlalchemy import select as sa_select
+    from models import DeploymentRuleSnapshot
+    import uuid
+
+    c_id, _ = await _setup(authed_client)
+    dep_resp = (await authed_client.post("/api/deployments", json={"client_id": c_id, "version": "v1.0"})).json()
+
+    snap_result = await db.execute(
+        sa_select(DeploymentRuleSnapshot).where(
+            DeploymentRuleSnapshot.deployment_id == dep_resp["id"]
+        )
+    )
+    snaps = snap_result.scalars().all()
+    assert len(snaps) == 1
+    assert snaps[0].rule_type_snapshot is not None
+    assert snaps[0].rule_type_snapshot["slug"] == "alert_classifier"
+    assert "drl_package" in snaps[0].rule_type_snapshot
+
+
+@pytest.mark.asyncio
+async def test_create_deployment_stores_rule_types_snapshot(authed_client, db):
+    from sqlalchemy import select as sa_select
+    from models import Deployment
+
+    c_id, _ = await _setup(authed_client)
+    dep_resp = (await authed_client.post("/api/deployments", json={"client_id": c_id, "version": "v1.0"})).json()
+
+    dep_result = await db.execute(
+        sa_select(Deployment).where(Deployment.id == dep_resp["id"])
+    )
+    dep = dep_result.scalar_one()
+    assert dep.rule_types_snapshot is not None
+    assert isinstance(dep.rule_types_snapshot, list)
+    slugs = [rt["slug"] for rt in dep.rule_types_snapshot]
+    assert "alert_classifier" in slugs

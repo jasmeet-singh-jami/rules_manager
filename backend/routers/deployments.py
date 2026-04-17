@@ -75,6 +75,10 @@ async def create_deployment(
     db.add(deployment)
     await db.flush()
 
+    rt_result = await db.execute(select(RuleType).order_by(RuleType.pipeline_stage))
+    all_rts = rt_result.scalars().all()
+    rt_map = {str(rt.id): _rt_to_dict(rt) for rt in all_rts}
+
     rules_result = await db.execute(
         select(Rule).where(Rule.client_id == body.client_id, Rule.enabled == True)
     )
@@ -94,8 +98,11 @@ async def create_deployment(
             rule_id=rule.id,
             rule_snapshot=_rule_to_dict(rule),
             drl_block=drl_block,
+            rule_type_snapshot=rt_map.get(str(rule.rule_type_id)),
         )
         db.add(snapshot)
+
+    deployment.rule_types_snapshot = sorted(rt_map.values(), key=lambda x: x["pipeline_stage"])
 
     await db.commit()
     await db.refresh(deployment)
