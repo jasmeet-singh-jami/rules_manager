@@ -70,8 +70,8 @@ Globals are stored as `DrlImport` rows with `kind='global'` and `is_shared=True`
 
 ### `/import/confirm` behaviour
 
-1. Upserts `DrlFunction` rows by `(rule_type_id, name)` — inserts if not exists, skips if already present
-2. Upserts `DrlImport` rows by `(rule_type_id, statement)`
+1. Upserts `DrlFunction` rows by `(rule_type_id, name)` — inserts if not exists, **updates `body`** if name already exists (so re-importing an updated file refreshes the function body)
+2. Upserts `DrlImport` rows by `(rule_type_id, statement)` — inserts if not exists, no-op if already present (statement is the identity)
 3. Creates each `Rule` with `required_function_names` and `required_import_statements` populated from parse results
 
 Import heuristic results are accepted as-is — no correction UI in the import preview.
@@ -96,6 +96,7 @@ def generate_drl_text(
 3. **Collect needed imports** — union of `required_import_statements` from exported rules + imports whose simple class name appears in any included function body; deduplicated by statement string
 4. **Always-include** — all `is_shared=True` imports/globals prepended unconditionally
 5. **Emit order:** `package` → imports (sorted, deduped) → globals → functions (original declaration order) → rules
+6. **Missing function resilience** — if a `required_function_name` references a function that no longer exists in `DrlFunction` (e.g. manually deleted), the generator skips it and continues rather than erroring
 
 All existing callers (deployment export, ZIP bundle, single-rule export) updated to fetch `DrlFunction` and `DrlImport` rows from the DB and pass them in.
 
