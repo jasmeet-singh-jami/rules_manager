@@ -124,3 +124,87 @@ async def test_create_deployment_stores_rule_types_snapshot(authed_client, db):
     assert isinstance(dep.rule_types_snapshot, list)
     slugs = [rt["slug"] for rt in dep.rule_types_snapshot]
     assert "alert_classifier" in slugs
+
+
+@pytest.mark.asyncio
+async def test_export_uses_snapshotted_rule_type_metadata(authed_client, db):
+    from sqlalchemy import update as sa_update
+    from models import RuleType
+
+    c_id, _ = await _setup(authed_client)
+    dep = (await authed_client.post("/api/deployments", json={"client_id": c_id, "version": "v1.0"})).json()
+
+    rt_resp = (await authed_client.get("/api/rule-types")).json()
+    rt = next(r for r in rt_resp if r["slug"] == "alert_classifier")
+    original_package = rt["drl_package"]
+
+    await db.execute(
+        sa_update(RuleType)
+        .where(RuleType.id == rt["id"])
+        .values(drl_package="com.mutated.package")
+    )
+    await db.commit()
+
+    try:
+        response = await authed_client.get(f"/api/deployments/{dep['id']}/export")
+        assert response.status_code == 200
+        buf = io.BytesIO(response.content)
+        with zipfile.ZipFile(buf) as zf:
+            content = zf.read("alert_classifier.drl").decode("utf-8")
+        assert f"package {original_package}" in content
+        assert "com.mutated.package" not in content
+    finally:
+        await db.execute(
+            sa_update(RuleType)
+            .where(RuleType.id == rt["id"])
+            .values(drl_package=original_package)
+        )
+        await db.commit()
+
+
+@pytest.mark.asyncio
+async def test_export_survives_rule_deletion(authed_client):
+    c_id, rule_id = await _setup(authed_client)
+    dep = (await authed_client.post("/api/deployments", json={"client_id": c_id, "version": "v1.0"})).json()
+
+    del_resp = await authed_client.delete(f"/api/rules/{rule_id}")
+    assert del_resp.status_code == 204
+
+    response = await authed_client.get(f"/api/deployments/{dep['id']}/export")
+    assert response.status_code == 200
+    buf = io.BytesIO(response.content)
+    with zipfile.ZipFile(buf) as zf:
+        content = zf.read("alert_classifier.drl").decode("utf-8")
+    assert "DeployRule_1" in content
+
+
+@pytest.mark.asyncio
+async def test_export_excludes_rule_types_added_after_deployment(authed_client, db):
+    import uuid as _uuid
+    from models import RuleType
+
+    c_id, _ = await _setup(authed_client)
+    dep = (await authed_client.post("/api/deployments", json={"client_id": c_id, "version": "v1.0"})).json()
+
+    new_rt = RuleType(
+        id=_uuid.uuid4(),
+        slug="post_deploy_type",
+        name="Post Deploy Type",
+        pipeline_stage=99,
+        drl_package="com.post.deploy",
+        drl_imports="",
+        drl_functions=None,
+    )
+    db.add(new_rt)
+    await db.commit()
+
+    try:
+        response = await authed_client.get(f"/api/deployments/{dep['id']}/export")
+        assert response.status_code == 200
+        buf = io.BytesIO(response.content)
+        with zipfile.ZipFile(buf) as zf:
+            names = zf.namelist()
+        assert "post_deploy_type.drl" not in names
+    finally:
+        await db.delete(new_rt)
+        await db.commit()

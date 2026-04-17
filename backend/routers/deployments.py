@@ -143,34 +143,22 @@ async def export_deployment(
 
     for snap in snapshots:
         rule_dict = snap.rule_snapshot
-        rt_id = rule_dict.get("rule_type_id", "")
-
+        rt_snapshot = snap.rule_type_snapshot
+        if rt_snapshot is None:
+            continue
+        rt_id = rt_snapshot["id"]
         if rt_id not in rt_rules:
-            if snap.rule_id:
-                rule_result = await db.execute(select(Rule).where(Rule.id == snap.rule_id))
-                rule_obj = rule_result.scalar_one_or_none()
-                if rule_obj:
-                    rt_result = await db.execute(
-                        select(RuleType).where(RuleType.id == rule_obj.rule_type_id)
-                    )
-                    rt_obj = rt_result.scalar_one_or_none()
-                    if rt_obj:
-                        rt_id = str(rt_obj.id)
-                        rt_rules[rt_id] = (_rt_to_dict(rt_obj), [])
+            rt_rules[rt_id] = (rt_snapshot, [])
+        rt_rules[rt_id][1].append({
+            "name": rule_dict["name"],
+            "condition_raw": rule_dict.get("condition_raw") or "",
+            "action_raw": rule_dict.get("action_raw") or "",
+        })
 
-        if rt_id in rt_rules:
-            rt_rules[rt_id][1].append({
-                "name": rule_dict["name"],
-                "condition_raw": rule_dict.get("condition_raw") or "",
-                "action_raw": rule_dict.get("action_raw") or "",
-            })
-
-    all_rt_result = await db.execute(select(RuleType).order_by(RuleType.pipeline_stage))
-    all_rts = all_rt_result.scalars().all()
-    for rt_obj in all_rts:
-        rt_id = str(rt_obj.id)
+    for rt_snapshot in (dep.rule_types_snapshot or []):
+        rt_id = rt_snapshot["id"]
         if rt_id not in rt_rules:
-            rt_rules[rt_id] = (_rt_to_dict(rt_obj), [])
+            rt_rules[rt_id] = (rt_snapshot, [])
 
     sorted_pairs = sorted(
         [(rt_dict, rules) for rt_dict, rules in rt_rules.values()],
