@@ -91,6 +91,8 @@ def _detect_rule_import_statements(
     for imp in parsed_imports:
         if imp.kind == "global":
             continue
+        if imp.statement.startswith("import java.lang."):
+            continue
         simple = imp.statement.rstrip(";").split(".")[-1]
         if simple and re.search(r"\b" + re.escape(simple) + r"\b", rule_text):
             matched.append(imp.statement)
