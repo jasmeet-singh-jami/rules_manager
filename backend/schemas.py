@@ -28,6 +28,47 @@ class ClientOut(BaseModel):
     created_at: datetime
 
 
+# ── DRL Functions & Imports ───────────────────────────────────────────────────
+
+class DrlFunctionOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: UUID
+    rule_type_id: UUID
+    name: str
+    body: str
+
+
+class DrlFunctionCreate(BaseModel):
+    name: str
+    body: str
+
+
+class DrlFunctionUpdate(BaseModel):
+    name: Optional[str] = None
+    body: Optional[str] = None
+
+
+class DrlImportOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: UUID
+    rule_type_id: UUID
+    statement: str
+    kind: str
+    is_shared: bool
+
+
+class DrlImportCreate(BaseModel):
+    statement: str
+    kind: str = "import"
+    is_shared: bool = False
+
+
+class DrlImportUpdate(BaseModel):
+    statement: Optional[str] = None
+    kind: Optional[str] = None
+    is_shared: Optional[bool] = None
+
+
 # ── Rule Types ────────────────────────────────────────────────────────────────
 
 class RuleTypeOut(BaseModel):
@@ -38,8 +79,8 @@ class RuleTypeOut(BaseModel):
     name: str
     pipeline_stage: int
     drl_package: str
-    drl_imports: str
-    drl_functions: Optional[str]
+    functions: list[DrlFunctionOut] = []
+    imports: list[DrlImportOut] = []
 
 
 # ── Rules ─────────────────────────────────────────────────────────────────────
@@ -88,6 +129,8 @@ class RuleOut(BaseModel):
     enabled: bool
     priority: Optional[str]
     window: Optional[int]
+    required_function_names: Optional[list[str]] = None
+    required_import_statements: Optional[list[str]] = None
     created_at: datetime
     updated_at: datetime
 
@@ -125,13 +168,27 @@ class ParsedRulePreview(BaseModel):
     name: str
     condition_raw: str
     action_raw: str
+    required_function_names: list[str] = []
+    required_import_statements: list[str] = []
 
 
 class ParsedFilePreview(BaseModel):
     filename: str
     package: str
     rule_count: int
+    functions: list[dict] = []
+    imports: list[dict] = []
     rules: list[ParsedRulePreview]
+
+
+class DrlFunctionImport(BaseModel):
+    name: str
+    body: str
+
+
+class DrlImportImport(BaseModel):
+    statement: str
+    kind: str = "import"
 
 
 class ImportConfirmRule(BaseModel):
@@ -142,9 +199,14 @@ class ImportConfirmRule(BaseModel):
     tool: Optional[str] = None
     condition_raw: str
     action_raw: str
+    required_function_names: list[str] = []
+    required_import_statements: list[str] = []
 
 
 class ImportConfirmRequest(BaseModel):
+    rule_type_id: UUID
+    functions: list[DrlFunctionImport] = []
+    imports: list[DrlImportImport] = []
     rules: list[ImportConfirmRule]
 
 

@@ -35,10 +35,40 @@ class RuleType(Base):
     name = Column(String(100), nullable=False)
     pipeline_stage = Column(Integer, nullable=False)
     drl_package = Column(String(200), nullable=False)
-    drl_imports = Column(Text, nullable=False)
-    drl_functions = Column(Text, nullable=True)
 
     rules = relationship("Rule", back_populates="rule_type")
+    functions = relationship("DrlFunction", back_populates="rule_type", cascade="all, delete-orphan", lazy="selectin")
+    imports = relationship("DrlImport", back_populates="rule_type", cascade="all, delete-orphan", lazy="selectin")
+
+
+DrlImportKind = SAEnum("import", "global", name="drl_import_kind")
+
+
+class DrlFunction(Base):
+    __tablename__ = "drl_functions"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    rule_type_id = Column(UUID(as_uuid=True), ForeignKey("rule_types.id", ondelete="CASCADE"), nullable=False)
+    name = Column(String(100), nullable=False)
+    body = Column(Text, nullable=False)
+
+    rule_type = relationship("RuleType", back_populates="functions")
+
+    __table_args__ = (UniqueConstraint("rule_type_id", "name", name="uq_drl_function_name"),)
+
+
+class DrlImport(Base):
+    __tablename__ = "drl_imports"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    rule_type_id = Column(UUID(as_uuid=True), ForeignKey("rule_types.id", ondelete="CASCADE"), nullable=False)
+    statement = Column(Text, nullable=False)
+    kind = Column(DrlImportKind, nullable=False, default="import")
+    is_shared = Column(Boolean, default=False, nullable=False)
+
+    rule_type = relationship("RuleType", back_populates="imports")
+
+    __table_args__ = (UniqueConstraint("rule_type_id", "statement", name="uq_drl_import_stmt"),)
 
 
 class Rule(Base):
@@ -57,6 +87,8 @@ class Rule(Base):
     enabled = Column(Boolean, default=True, nullable=False)
     priority = Column(String(10), nullable=True)
     window = Column(Integer, nullable=True)
+    required_function_names = Column(JSONB, nullable=True)
+    required_import_statements = Column(JSONB, nullable=True)
     created_at = Column(TIMESTAMP(timezone=True), default=utcnow, nullable=False)
     updated_at = Column(TIMESTAMP(timezone=True), default=utcnow, onupdate=utcnow, nullable=False)
 
