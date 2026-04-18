@@ -85,7 +85,6 @@ class Rule(Base):
     condition_meta = Column(JSONB, nullable=True)
     action_meta = Column(JSONB, nullable=True)
     enabled = Column(Boolean, default=True, nullable=False)
-    priority = Column(String(10), nullable=True)
     window = Column(Integer, nullable=True)
     required_function_names = Column(JSONB, nullable=True)
     required_import_statements = Column(JSONB, nullable=True)

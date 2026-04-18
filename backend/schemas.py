@@ -96,7 +96,6 @@ class RuleCreate(BaseModel):
     condition_meta: Optional[Any] = None
     action_meta: Optional[Any] = None
     enabled: bool = True
-    priority: Optional[str] = None
     window: Optional[int] = None
 
 
@@ -109,7 +108,6 @@ class RuleUpdate(BaseModel):
     condition_meta: Optional[Any] = None
     action_meta: Optional[Any] = None
     enabled: Optional[bool] = None
-    priority: Optional[str] = None
     window: Optional[int] = None
 
 
@@ -127,7 +125,6 @@ class RuleOut(BaseModel):
     condition_meta: Optional[Any]
     action_meta: Optional[Any]
     enabled: bool
-    priority: Optional[str]
     window: Optional[int]
     required_function_names: Optional[list[str]] = None
     required_import_statements: Optional[list[str]] = None

@@ -189,7 +189,6 @@ async def copy_rule(
         condition_meta=original.condition_meta,
         action_meta=original.action_meta,
         enabled=original.enabled,
-        priority=original.priority,
         window=original.window,
     )
     db.add(copy)

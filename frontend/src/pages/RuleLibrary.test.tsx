@@ -20,7 +20,7 @@ const mockRuleTypes = [
 const mockRules = [
   { id: 'r1', client_id: 'c1', rule_type_id: 'rt1', name: 'AlertRule_1', description: null,
     tool: 'LogicMonitor', condition_raw: 'x', action_raw: 'y', condition_meta: null,
-    action_meta: null, enabled: true, priority: 'P1', window: null,
+    action_meta: null, enabled: true, window: null,
     required_function_names: null, required_import_statements: null,
     created_at: '', updated_at: '' },
 ]

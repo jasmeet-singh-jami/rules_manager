@@ -4,7 +4,6 @@ import { Rule, RuleType, Client, createRule, updateRule } from '../../api/client
 import { DrlPreview } from '../DrlPreview'
 
 const TOOLS = ['', 'LogicMonitor', 'SCOM', 'Tivoli', 'Dynatrace', 'Solarwinds', 'Datadog', 'Any']
-const PRIORITIES = ['', 'P1', 'P2', 'P3', 'P4']
 
 interface Props {
   rule: Partial<Rule>
@@ -28,7 +27,6 @@ export function RuleEditor({ rule, ruleTypes, clients, defaultClientId, defaultR
     condition_raw: rule.condition_raw ?? '',
     action_raw: rule.action_raw ?? '',
     enabled: rule.enabled ?? true,
-    priority: rule.priority ?? '',
     window: rule.window?.toString() ?? '',
   })
   const [saving, setSaving] = useState(false)
@@ -56,7 +54,6 @@ export function RuleEditor({ rule, ruleTypes, clients, defaultClientId, defaultR
         condition_meta: null,
         action_meta: null,
         enabled: form.enabled,
-        priority: form.priority || null,
         window: form.window ? parseInt(form.window) : null,
         required_function_names: rule.required_function_names ?? null,
         required_import_statements: rule.required_import_statements ?? null,
@@ -108,19 +105,11 @@ export function RuleEditor({ rule, ruleTypes, clients, defaultClientId, defaultR
               <input id="re-desc" value={form.description} onChange={e => set('description', e.target.value)} placeholder="Optional plain English description" />
             </div>
 
-            <div className="form-grid" style={{ marginBottom: 14 }}>
-              <div className="form-row">
-                <label htmlFor="re-tool">Tool</label>
-                <select id="re-tool" value={form.tool} onChange={e => set('tool', e.target.value)}>
-                  {TOOLS.map(t => <option key={t} value={t}>{t || 'Any / unset'}</option>)}
-                </select>
-              </div>
-              <div className="form-row">
-                <label htmlFor="re-priority">Priority</label>
-                <select id="re-priority" value={form.priority} onChange={e => set('priority', e.target.value)}>
-                  {PRIORITIES.map(p => <option key={p} value={p}>{p || '— none —'}</option>)}
-                </select>
-              </div>
+            <div className="form-row">
+              <label htmlFor="re-tool">Tool</label>
+              <select id="re-tool" value={form.tool} onChange={e => set('tool', e.target.value)}>
+                {TOOLS.map(t => <option key={t} value={t}>{t || 'Any / unset'}</option>)}
+              </select>
             </div>
 
             <div className="form-row" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>

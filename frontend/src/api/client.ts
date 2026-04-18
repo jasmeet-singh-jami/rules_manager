@@ -47,7 +47,6 @@ export interface Rule {
   condition_meta: unknown
   action_meta: unknown
   enabled: boolean
-  priority: string | null
   window: number | null
   required_function_names: string[] | null
   required_import_statements: string[] | null

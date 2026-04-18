@@ -24,7 +24,6 @@ def _rule_to_dict(rule: Rule) -> dict:
         "condition_meta": rule.condition_meta,
         "action_meta": rule.action_meta,
         "enabled": rule.enabled,
-        "priority": rule.priority,
         "window": rule.window,
         "required_function_names": rule.required_function_names or [],
         "required_import_statements": rule.required_import_statements or [],
