@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import { getClients, Client } from '../api/client'
+import { getClients, getRuleTypes, Client, RuleType } from '../api/client'
 import { useAuth } from '../context/AuthContext'
+import { FunctionsPanel } from '../components/FunctionsPanel/FunctionsPanel'
 
 interface UserWithClients {
   id: string
@@ -38,15 +39,16 @@ export function AdminPage() {
   const token = authToken ?? ''
   const [users, setUsers] = useState<UserWithClients[]>([])
   const [clients, setClients] = useState<Client[]>([])
+  const [ruleTypes, setRuleTypes] = useState<RuleType[]>([])
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
   const [resetPasswords, setResetPasswords] = useState<Record<string, string>>({})
   const [resetStatus, setResetStatus] = useState<Record<string, 'ok' | 'error' | ''>>({})
-
+  const [expandedRuleType, setExpandedRuleType] = useState<string | null>(null)
 
   useEffect(() => {
-    Promise.all([listUsers(token), getClients()])
-      .then(([u, c]) => { setUsers(u); setClients(c) })
+    Promise.all([listUsers(token), getClients(), getRuleTypes()])
+      .then(([u, c, rts]) => { setUsers(u); setClients(c); setRuleTypes(rts) })
       .catch(() => setError('Failed to load data'))
       .finally(() => setLoading(false))
   }, [])
@@ -186,6 +188,33 @@ export function AdminPage() {
             ))}
           </tbody>
         </table>
+      </div>
+      <h2 style={{ margin: '32px 0 16px' }}>Rule Type Functions & Imports</h2>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {ruleTypes.map(rt => (
+          <div key={rt.id} className="glass-card" style={{ overflow: 'hidden' }}>
+            <button
+              onClick={() => setExpandedRuleType(prev => prev === rt.id ? null : rt.id)}
+              style={{
+                width: '100%', textAlign: 'left', background: 'none', border: 'none',
+                cursor: 'pointer', padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+              }}
+            >
+              <span>
+                <strong>{rt.pipeline_stage}. {rt.name}</strong>
+                <span className="muted" style={{ marginLeft: 10, fontSize: 12 }}>
+                  {rt.functions.length} fn · {rt.imports.length} imports
+                </span>
+              </span>
+              <span style={{ color: 'var(--muted)', fontSize: 18 }}>{expandedRuleType === rt.id ? '▲' : '▼'}</span>
+            </button>
+            {expandedRuleType === rt.id && (
+              <div style={{ padding: '0 16px 16px', borderTop: '1px solid var(--line)' }}>
+                <FunctionsPanel ruleType={rt} />
+              </div>
+            )}
+          </div>
+        ))}
       </div>
     </>
   )
