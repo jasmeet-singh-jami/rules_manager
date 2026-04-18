@@ -8,7 +8,7 @@ vi.mock('../../api/client')
 
 const ruleTypes: RuleType[] = [
   { id: 'rt1', slug: 'alert_classifier', name: 'Alert Classifier', pipeline_stage: 1,
-    drl_package: 'com.example', drl_imports: '', drl_functions: null },
+    drl_package: 'com.example', functions: [], imports: [] },
 ]
 const clients: Client[] = [
   { id: 'c1', code: 'INFY', name: 'Infosys', description: null, created_at: '' },
@@ -19,13 +19,15 @@ beforeEach(() => {
     id: 'new1', client_id: 'c1', rule_type_id: 'rt1', name: 'TestRule',
     description: null, tool: null, condition_raw: 'cond', action_raw: 'act',
     condition_meta: null, action_meta: null, enabled: true, priority: null,
-    window: null, created_at: '', updated_at: '',
+    window: null, required_function_names: null, required_import_statements: null,
+    created_at: '', updated_at: '',
   })
   vi.mocked(api.updateRule).mockResolvedValue({
     id: 'existing1', client_id: 'c1', rule_type_id: 'rt1', name: 'Updated',
     description: null, tool: null, condition_raw: 'cond', action_raw: 'act',
     condition_meta: null, action_meta: null, enabled: true, priority: null,
-    window: null, created_at: '', updated_at: '',
+    window: null, required_function_names: null, required_import_statements: null,
+    created_at: '', updated_at: '',
   })
 })
 

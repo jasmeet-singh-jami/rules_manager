@@ -10,14 +10,29 @@ export interface Client {
   created_at: string
 }
 
+export interface DrlFunction {
+  id: string
+  rule_type_id: string
+  name: string
+  body: string
+}
+
+export interface DrlImport {
+  id: string
+  rule_type_id: string
+  statement: string
+  kind: 'import' | 'global'
+  is_shared: boolean
+}
+
 export interface RuleType {
   id: string
   slug: string
   name: string
   pipeline_stage: number
   drl_package: string
-  drl_imports: string
-  drl_functions: string | null
+  functions: DrlFunction[]
+  imports: DrlImport[]
 }
 
 export interface Rule {
@@ -34,6 +49,8 @@ export interface Rule {
   enabled: boolean
   priority: string | null
   window: number | null
+  required_function_names: string[] | null
+  required_import_statements: string[] | null
   created_at: string
   updated_at: string
 }
@@ -51,12 +68,16 @@ export interface ParsedRulePreview {
   name: string
   condition_raw: string
   action_raw: string
+  required_function_names: string[]
+  required_import_statements: string[]
 }
 
 export interface ParsedFilePreview {
   filename: string
   package: string
   rule_count: number
+  functions: { name: string; body: string }[]
+  imports: { statement: string; kind: string }[]
   rules: ParsedRulePreview[]
 }
 
@@ -68,6 +89,15 @@ export interface ImportConfirmRule {
   tool?: string
   condition_raw: string
   action_raw: string
+  required_function_names: string[]
+  required_import_statements: string[]
+}
+
+export interface ImportConfirmPayload {
+  rule_type_id: string
+  functions: { name: string; body: string }[]
+  imports: { statement: string; kind: string }[]
+  rules: ImportConfirmRule[]
 }
 
 // ── Core request helper ───────────────────────────────────────────────────
@@ -113,6 +143,30 @@ export const deleteClient = (id: string) =>
 
 export const getRuleTypes = () =>
   request<RuleType[]>('/rule-types')
+
+export const getRuleFunctions = (ruleTypeId: string) =>
+  request<DrlFunction[]>(`/rule-types/${ruleTypeId}/functions`)
+
+export const createRuleFunction = (ruleTypeId: string, body: { name: string; body: string }) =>
+  request<DrlFunction>(`/rule-types/${ruleTypeId}/functions`, { method: 'POST', body: JSON.stringify(body) })
+
+export const updateRuleFunction = (ruleTypeId: string, funcId: string, body: { name?: string; body?: string }) =>
+  request<DrlFunction>(`/rule-types/${ruleTypeId}/functions/${funcId}`, { method: 'PUT', body: JSON.stringify(body) })
+
+export const deleteRuleFunction = (ruleTypeId: string, funcId: string) =>
+  request<void>(`/rule-types/${ruleTypeId}/functions/${funcId}`, { method: 'DELETE' })
+
+export const getRuleImports = (ruleTypeId: string) =>
+  request<DrlImport[]>(`/rule-types/${ruleTypeId}/imports`)
+
+export const createRuleImport = (ruleTypeId: string, body: { statement: string; kind: string; is_shared: boolean }) =>
+  request<DrlImport>(`/rule-types/${ruleTypeId}/imports`, { method: 'POST', body: JSON.stringify(body) })
+
+export const updateRuleImport = (ruleTypeId: string, importId: string, body: { statement?: string; kind?: string; is_shared?: boolean }) =>
+  request<DrlImport>(`/rule-types/${ruleTypeId}/imports/${importId}`, { method: 'PUT', body: JSON.stringify(body) })
+
+export const deleteRuleImport = (ruleTypeId: string, importId: string) =>
+  request<void>(`/rule-types/${ruleTypeId}/imports/${importId}`, { method: 'DELETE' })
 
 // ── Rules ─────────────────────────────────────────────────────────────────
 
@@ -191,8 +245,8 @@ export const parseDrlFile = async (file: File): Promise<ParsedFilePreview> => {
   return res.json() as Promise<ParsedFilePreview>
 }
 
-export const confirmImport = (rules: ImportConfirmRule[]) =>
+export const confirmImport = (payload: ImportConfirmPayload) =>
   request<{ imported: number; rule_ids: string[] }>('/import/confirm', {
     method: 'POST',
-    body: JSON.stringify({ rules }),
+    body: JSON.stringify(payload),
   })

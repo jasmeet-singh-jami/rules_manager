@@ -9,7 +9,7 @@ vi.mock('../api/client')
 
 const mockRuleTypes = [
   { id: 'rt1', slug: 'alert_classifier', name: 'Alert Classifier', pipeline_stage: 1,
-    drl_package: '', drl_imports: '', drl_functions: null },
+    drl_package: '', functions: [], imports: [] },
 ]
 const mockClients = [
   { id: 'c1', code: 'INFY', name: 'Infosys', description: null, created_at: '' },
@@ -18,9 +18,11 @@ const mockPreview = {
   filename: 'test.drl',
   package: 'com.example',
   rule_count: 2,
+  functions: [],
+  imports: [],
   rules: [
-    { name: 'Rule_1', condition_raw: 'cond1', action_raw: 'act1' },
-    { name: 'Rule_2', condition_raw: 'cond2', action_raw: 'act2' },
+    { name: 'Rule_1', condition_raw: 'cond1', action_raw: 'act1', required_function_names: [], required_import_statements: [] },
+    { name: 'Rule_2', condition_raw: 'cond2', action_raw: 'act2', required_function_names: [], required_import_statements: [] },
   ],
 }
 

@@ -40,14 +40,20 @@ export function ImportDrl() {
     if (!preview || !selectedClientId || !selectedRuleTypeId) return
     setLoading(true); setError('')
     try {
-      const rules = preview.rules.map(r => ({
-        client_id: selectedClientId,
+      const result = await confirmImport({
         rule_type_id: selectedRuleTypeId,
-        name: r.name,
-        condition_raw: r.condition_raw,
-        action_raw: r.action_raw,
-      }))
-      const result = await confirmImport(rules)
+        functions: preview.functions,
+        imports: preview.imports,
+        rules: preview.rules.map(r => ({
+          client_id: selectedClientId,
+          rule_type_id: selectedRuleTypeId,
+          name: r.name,
+          condition_raw: r.condition_raw,
+          action_raw: r.action_raw,
+          required_function_names: r.required_function_names,
+          required_import_statements: r.required_import_statements,
+        })),
+      })
       setSuccess(`✓ ${result.imported} rule${result.imported !== 1 ? 's' : ''} imported successfully`)
       setPreview(null)
     } catch { setError('Import failed') }

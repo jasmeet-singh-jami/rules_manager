@@ -58,6 +58,8 @@ export function RuleEditor({ rule, ruleTypes, clients, defaultClientId, defaultR
         enabled: form.enabled,
         priority: form.priority || null,
         window: form.window ? parseInt(form.window) : null,
+        required_function_names: rule.required_function_names ?? null,
+        required_import_statements: rule.required_import_statements ?? null,
       }
       const saved = isNew
         ? await createRule(payload)
