@@ -36,8 +36,6 @@ def _rt_to_dict(rt: RuleType) -> dict:
         "name": rt.name,
         "pipeline_stage": rt.pipeline_stage,
         "drl_package": rt.drl_package,
-        "drl_imports": rt.drl_imports,
-        "drl_functions": rt.drl_functions,
     }
 
 

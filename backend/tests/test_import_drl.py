@@ -54,6 +54,9 @@ async def test_confirm_saves_rules(authed_client):
     c = (await authed_client.post("/api/clients", json={"code": "IMP", "name": "Import Test"})).json()
     rt = next(rt for rt in (await authed_client.get("/api/rule-types")).json() if rt["slug"] == "alert_classifier")
     payload = {
+        "rule_type_id": rt["id"],
+        "functions": [],
+        "imports": [],
         "rules": [
             {
                 "client_id": c["id"],
@@ -63,7 +66,7 @@ async def test_confirm_saves_rules(authed_client):
                 "condition_raw": "alert:IPPAlert(sourceId == \"LM\")",
                 "action_raw": "alert.setServiceName(\"svc\");",
             }
-        ]
+        ],
     }
     response = await authed_client.post("/api/import/confirm", json=payload)
     assert response.status_code == 201
@@ -74,6 +77,7 @@ async def test_confirm_saves_rules(authed_client):
 
 @pytest.mark.asyncio
 async def test_confirm_empty_list_returns_zero(authed_client):
-    response = await authed_client.post("/api/import/confirm", json={"rules": []})
+    rts = (await authed_client.get("/api/rule-types")).json()
+    response = await authed_client.post("/api/import/confirm", json={"rule_type_id": rts[0]["id"], "functions": [], "imports": [], "rules": []})
     assert response.status_code == 201
     assert response.json()["imported"] == 0

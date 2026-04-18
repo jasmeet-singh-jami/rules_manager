@@ -192,8 +192,6 @@ async def test_export_excludes_rule_types_added_after_deployment(authed_client, 
         name="Post Deploy Type",
         pipeline_stage=99,
         drl_package="com.post.deploy",
-        drl_imports="",
-        drl_functions=None,
     )
     db.add(new_rt)
     await db.commit()

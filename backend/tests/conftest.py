@@ -10,7 +10,7 @@ TEST_DB_URL = os.getenv(
 )
 
 # Tables that survive clean_tables (seeded reference data)
-PRESERVED_TABLES = {"rule_types", "users", "tokens"}
+PRESERVED_TABLES = {"rule_types", "drl_functions", "drl_imports", "users", "tokens"}
 
 
 def pytest_collection_modifyitems(items):
