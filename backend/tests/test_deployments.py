@@ -206,3 +206,31 @@ async def test_export_excludes_rule_types_added_after_deployment(authed_client, 
     finally:
         await db.delete(new_rt)
         await db.commit()
+
+
+@pytest.mark.asyncio
+async def test_export_deployment_zip_contains_drl(authed_client):
+    import zipfile, io
+    c = (await authed_client.post("/api/clients", json={"code": "EXP2", "name": "ExportTest2"})).json()
+    rts = (await authed_client.get("/api/rule-types")).json()
+    rt = next(r for r in rts if r["slug"] == "alert_classifier")
+    await authed_client.post("/api/import/confirm", json={
+        "rule_type_id": rt["id"],
+        "functions": [],
+        "imports": [],
+        "rules": [{
+            "client_id": c["id"], "rule_type_id": rt["id"],
+            "name": "ExportRule1", "condition_raw": "x:Foo()", "action_raw": "bar();",
+            "required_function_names": [], "required_import_statements": [],
+        }],
+    })
+    dep = (await authed_client.post("/api/deployments", json={
+        "client_id": c["id"], "version": "v-export-test"
+    })).json()
+    res = await authed_client.get(f"/api/deployments/{dep['id']}/export")
+    assert res.status_code == 200
+    buf = io.BytesIO(res.content)
+    with zipfile.ZipFile(buf) as zf:
+        assert "alert_classifier.drl" in zf.namelist()
+        content = zf.read("alert_classifier.drl").decode()
+    assert "ExportRule1" in content
