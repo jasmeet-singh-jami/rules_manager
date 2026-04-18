@@ -141,7 +141,7 @@ export function ImportDrl() {
           </div>
           <table>
             <thead>
-              <tr><th>#</th><th>Rule Name</th><th>Condition (when)</th><th>Action (then)</th></tr>
+              <tr><th>#</th><th>Rule Name</th><th>Condition (when)</th><th>Action (then)</th><th>Functions</th></tr>
             </thead>
             <tbody>
               {preview.rules.map((r, i) => (
@@ -150,6 +150,16 @@ export function ImportDrl() {
                   <td><strong>{r.name}</strong></td>
                   <td><code style={{ fontSize: 12 }}>{r.condition_raw.slice(0, 80)}{r.condition_raw.length > 80 ? '…' : ''}</code></td>
                   <td><code style={{ fontSize: 12 }}>{r.action_raw.slice(0, 60)}{r.action_raw.length > 60 ? '…' : ''}</code></td>
+                  <td>
+                    {r.required_function_names.length === 0
+                      ? <span className="muted" style={{ fontSize: 12 }}>—</span>
+                      : <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
+                          {r.required_function_names.map(fn => (
+                            <span key={fn} style={{ fontSize: 11, background: 'rgba(124,58,237,0.1)', color: 'var(--accent)', borderRadius: 4, padding: '1px 6px', fontFamily: 'monospace' }}>{fn}</span>
+                          ))}
+                        </div>
+                    }
+                  </td>
                 </tr>
               ))}
             </tbody>

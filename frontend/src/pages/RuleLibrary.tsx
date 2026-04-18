@@ -338,6 +338,30 @@ export function RuleLibrary() {
                           </pre>
                         </div>
                       </div>
+                      {((rule.required_function_names?.length ?? 0) > 0 || (rule.required_import_statements?.length ?? 0) > 0) && (
+                        <div style={{ marginTop: 12 }}>
+                          {(rule.required_function_names?.length ?? 0) > 0 && (
+                            <div style={{ marginBottom: 6 }}>
+                              <div style={fieldLabelStyle}>Uses functions</div>
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                                {rule.required_function_names!.map(fn => (
+                                  <span key={fn} style={{ fontSize: 11, background: 'rgba(124,58,237,0.1)', color: 'var(--accent)', borderRadius: 4, padding: '2px 7px', fontFamily: 'monospace' }}>{fn}</span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          {(rule.required_import_statements?.length ?? 0) > 0 && (
+                            <div>
+                              <div style={fieldLabelStyle}>Uses imports</div>
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                                {rule.required_import_statements!.map(imp => (
+                                  <span key={imp} style={{ fontSize: 11, background: 'rgba(29,106,229,0.08)', color: 'var(--accent)', borderRadius: 4, padding: '2px 7px', fontFamily: 'monospace' }}>{imp.split('.').pop()?.replace(';', '') ?? imp}</span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </td>
                   </tr>
                 )}
