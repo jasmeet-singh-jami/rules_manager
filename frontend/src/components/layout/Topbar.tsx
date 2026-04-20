@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { logout as apiLogout } from '../../api/auth'
@@ -14,22 +15,25 @@ function useBreadcrumbs(): string[] {
   return segs.map(labelFor)
 }
 
-function toggleTheme() {
-  const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'
-  document.documentElement.dataset.theme = next
-  localStorage.setItem('polycloud.theme', next)
-}
-
 export function Topbar() {
   const crumbs = useBreadcrumbs()
   const { logout } = useAuth()
   const navigate = useNavigate()
-  const theme = document.documentElement.dataset.theme
+  const [theme, setTheme] = useState<string>(
+    () => document.documentElement.dataset.theme ?? 'light'
+  )
 
   async function handleLogout() {
     try { await apiLogout() } catch { /* ignore */ }
     logout()
     navigate('/login')
+  }
+
+  function handleToggleTheme() {
+    const next = theme === 'dark' ? 'light' : 'dark'
+    document.documentElement.dataset.theme = next
+    localStorage.setItem('polycloud.theme', next)
+    setTheme(next)
   }
 
   return (
@@ -48,7 +52,7 @@ export function Topbar() {
           <input readOnly placeholder="Search rules, clients, deployments…" />
           <span className="kbd">⌘K</span>
         </div>
-        <button className="btn icon ghost" title="Toggle theme" onClick={toggleTheme}>
+        <button className="btn icon ghost" title="Toggle theme" onClick={handleToggleTheme}>
           <Icon name={theme === 'dark' ? 'sun' : 'moon'} />
         </button>
         <button className="btn icon ghost" title="Log out" onClick={handleLogout}>

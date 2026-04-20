@@ -35,7 +35,7 @@ export function Sidebar() {
         ? location.pathname === '/'
         : location.pathname === entry.to || location.pathname.startsWith(entry.to + '/')
     return (
-      <NavLink key={entry.to} to={entry.to} className={`nav-item ${isActive ? 'active' : ''}`}>
+      <NavLink key={entry.to} to={entry.to} className={() => `nav-item${isActive ? ' active' : ''}`}>
         <Icon name={entry.icon} />
         <span className="truncate grow">{entry.label}</span>
       </NavLink>
