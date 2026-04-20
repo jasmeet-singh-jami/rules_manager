@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Client, Rule, RuleType, getRules, getClients, getRuleTypes, deleteRule, exportRules, copyRule } from '../api/client'
+import { Rule, RuleType, getRules, getRuleTypes, deleteRule, exportRules, copyRule } from '../api/client'
 import { RuleEditor } from '../components/RuleEditor/RuleEditor'
 import { useAuth } from '../context/AuthContext'
+import { useClients } from '../context/ClientContext'
 
 const TOOLS = ['Any', 'LogicMonitor', 'SCOM', 'Tivoli', 'Dynatrace', 'Solarwinds', 'Datadog']
 
@@ -32,10 +33,9 @@ const fieldLabelStyle: React.CSSProperties = {
 
 export function RuleLibrary() {
   const { hasEditAccess } = useAuth()
-  const [clients, setClients] = useState<Client[]>([])
+  const { clients, selectedClientId } = useClients()
   const [ruleTypes, setRuleTypes] = useState<RuleType[]>([])
   const [rules, setRules] = useState<Rule[]>([])
-  const [selectedClientId, setSelectedClientId] = useState('')
   const [activeTabIdx, setActiveTabIdx] = useState(0)
   const [search, setSearch] = useState('')
   const [toolFilter, setToolFilter] = useState('')
@@ -49,13 +49,11 @@ export function RuleLibrary() {
   const [copying, setCopying] = useState(false)
 
   useEffect(() => {
-    Promise.all([getClients(), getRuleTypes()])
-      .then(([c, rt]) => {
-        setClients(c)
+    getRuleTypes()
+      .then(rt => {
         setRuleTypes(rt.sort((a, b) => a.pipeline_stage - b.pipeline_stage))
       })
       .catch(() => {
-        setClients([])
         setRuleTypes([])
       })
   }, [])
@@ -181,22 +179,6 @@ export function RuleLibrary() {
             <button className="btn-primary" onClick={() => setEditingRule('new')}>+ New Rule</button>
           )}
         </div>
-      </div>
-
-      {/* Client selector */}
-      <div style={{ marginBottom: 14 }}>
-        <select
-          aria-label="Client"
-          value={selectedClientId}
-          onChange={e => { setSelectedClientId(e.target.value); setActiveTabIdx(0) }}
-          style={{ width: 260 }}
-        >
-          {clients.length === 0 && <option value="">Loading clients…</option>}
-          {clients.length > 0 && <option value="">All Clients</option>}
-          {clients.map(c => (
-            <option key={c.id} value={c.id}>{c.name} ({c.code})</option>
-          ))}
-        </select>
       </div>
 
       {/* Rule type tabs */}
@@ -382,7 +364,7 @@ export function RuleLibrary() {
           rule={editingRule === 'new' ? {} : editingRule}
           ruleTypes={ruleTypes}
           clients={clients}
-          defaultClientId={selectedClientId}
+          defaultClientId={selectedClientId ?? undefined}
           defaultRuleTypeId={activeRuleType?.id}
           onSave={handleSaved}
           onClose={() => setEditingRule(null)}

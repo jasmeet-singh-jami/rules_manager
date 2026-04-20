@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
-import { Client, RuleType, ParsedFilePreview, getClients, getRuleTypes, parseDrlFile, confirmImport } from '../api/client'
+import { RuleType, ParsedFilePreview, getRuleTypes, parseDrlFile, confirmImport } from '../api/client'
 import { useAuth } from '../context/AuthContext'
+import { useClients } from '../context/ClientContext'
 
 export function ImportDrl() {
   const { hasEditAccess } = useAuth()
-  const [clients, setClients] = useState<Client[]>([])
+  const { selectedClientId } = useClients()
   const [ruleTypes, setRuleTypes] = useState<RuleType[]>([])
   const [preview, setPreview] = useState<ParsedFilePreview | null>(null)
-  const [selectedClientId, setSelectedClientId] = useState('')
   const [selectedRuleTypeId, setSelectedRuleTypeId] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -16,15 +16,17 @@ export function ImportDrl() {
   const fileRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    Promise.all([getClients(), getRuleTypes()]).then(([cs, rts]) => {
-      setClients(cs)
+    getRuleTypes().then(rts => {
       setRuleTypes(rts)
-      if (cs.length > 0) setSelectedClientId(cs[0].id)
       if (rts.length > 0) setSelectedRuleTypeId(rts[0].id)
     }).catch(() => {
-      setError('Failed to load clients and rule types')
+      setError('Failed to load rule types')
     })
   }, [])
+
+  if (!selectedClientId) {
+    return <div className="empty"><div className="empty-title">Pick a client from the sidebar</div></div>
+  }
 
   async function handleFile(file: File) {
     if (!file.name.endsWith('.drl')) { setError('Only .drl files are accepted'); return }
@@ -73,12 +75,6 @@ export function ImportDrl() {
       <div className="glass-card" style={{ padding: 16, marginBottom: 16 }}>
         <p style={{ margin: '0 0 12px', fontWeight: 600 }}>Assign imported rules to:</p>
         <div className="form-grid">
-          <div className="form-row">
-            <label htmlFor="imp-client">Client</label>
-            <select id="imp-client" value={selectedClientId} onChange={e => setSelectedClientId(e.target.value)}>
-              {clients.map(c => <option key={c.id} value={c.id}>{c.name} ({c.code})</option>)}
-            </select>
-          </div>
           <div className="form-row">
             <label htmlFor="imp-ruletype">Rule Type</label>
             <select id="imp-ruletype" value={selectedRuleTypeId} onChange={e => setSelectedRuleTypeId(e.target.value)}>

@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
+import { ClientProvider } from './context/ClientContext'
 import { Layout } from './components/layout/Layout'
 import { ProtectedRoute } from './components/ProtectedRoute'
 import { RuleLibrary } from './pages/RuleLibrary'
@@ -22,6 +23,7 @@ export default function App() {
             path="/*"
             element={
               <ProtectedRoute>
+                <ClientProvider>
                 <Layout>
                   <Routes>
                     <Route path="/" element={<RuleLibrary />} />
@@ -39,6 +41,7 @@ export default function App() {
                     />
                   </Routes>
                 </Layout>
+                </ClientProvider>
               </ProtectedRoute>
             }
           />
