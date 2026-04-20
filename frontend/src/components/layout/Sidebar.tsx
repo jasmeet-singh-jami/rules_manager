@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { useClients } from '../../context/ClientContext'
@@ -32,6 +32,7 @@ export function Sidebar() {
   const location = useLocation()
   const { clients, selectedClientId, setSelectedClientId } = useClients()
   const [switcherOpen, setSwitcherOpen] = useState(false)
+  const switcherRef = useRef<HTMLDivElement>(null)
   const [ruleTypes, setRuleTypes] = useState<RuleType[]>([])
   const [rulesForClient, setRulesForClient] = useState<Rule[]>([])
   const onRulesPage = location.pathname.startsWith('/rules')
@@ -41,6 +42,17 @@ export function Sidebar() {
     if (!selectedClientId) { setRulesForClient([]); return }
     getRules({ client_id: selectedClientId }).then(setRulesForClient).catch(() => {})
   }, [selectedClientId])
+
+  useEffect(() => {
+    if (!switcherOpen) return
+    function handleOutside(e: MouseEvent) {
+      if (switcherRef.current && !switcherRef.current.contains(e.target as Node)) {
+        setSwitcherOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleOutside)
+    return () => document.removeEventListener('mousedown', handleOutside)
+  }, [switcherOpen])
 
   const selectedClient = clients.find(c => c.id === selectedClientId)
   const countByType = (id: string) => rulesForClient.filter(r => r.rule_type_id === id).length
@@ -101,7 +113,7 @@ export function Sidebar() {
         <div className="avatar">{(username || '?').slice(0, 2).toUpperCase()}</div>
         <div className="user-meta grow">
           <div className="user-name truncate">{username}</div>
-          <div className="user-role truncate" style={{ position: 'relative' }}>
+          <div ref={switcherRef} className="user-role truncate" style={{ position: 'relative' }}>
             <button
               className="btn sm ghost"
               onClick={() => setSwitcherOpen(o => !o)}
@@ -113,10 +125,9 @@ export function Sidebar() {
               <div className="card" style={{ position: 'absolute', bottom: 24, left: 0, zIndex: 50, padding: 6, minWidth: 180 }}>
                 {clients.map(c => (
                   <div key={c.id}
-                       className={`nav-item ${c.id === selectedClientId ? 'active' : ''}`}
+                       className={`nav-item${c.id === selectedClientId ? ' active' : ''}`}
                        onClick={() => { setSelectedClientId(c.id); setSwitcherOpen(false) }}>
                     <span className="grow truncate">{c.code}</span>
-                    <span className="count">{rulesForClient.filter(r => r.client_id === c.id).length || ''}</span>
                   </div>
                 ))}
               </div>

@@ -24,7 +24,7 @@ export function ClientProvider({ children }: { children: ReactNode }) {
       .then(cs => {
         if (cancelled) return
         setClients(cs)
-        if (!selectedClientId && cs.length > 0) setSelectedClientIdRaw(cs[0].id)
+        setSelectedClientIdRaw(prev => (!prev && cs.length > 0) ? cs[0].id : prev)
       })
       .finally(() => !cancelled && setLoading(false))
     return () => { cancelled = true }

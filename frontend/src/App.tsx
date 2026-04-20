@@ -24,23 +24,23 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <ClientProvider>
-                <Layout>
-                  <Routes>
-                    <Route path="/" element={<RuleLibrary />} />
-                    <Route path="/clients" element={<Clients />} />
-                    <Route path="/clients/:id/deployments" element={<Deployments />} />
-                    <Route path="/import" element={<ImportDrl />} />
-                    <Route path="/account" element={<AccountPage />} />
-                    <Route
-                      path="/admin"
-                      element={
-                        <ProtectedRoute adminOnly>
-                          <AdminPage />
-                        </ProtectedRoute>
-                      }
-                    />
-                  </Routes>
-                </Layout>
+                  <Layout>
+                    <Routes>
+                      <Route path="/" element={<RuleLibrary />} />
+                      <Route path="/clients" element={<Clients />} />
+                      <Route path="/clients/:id/deployments" element={<Deployments />} />
+                      <Route path="/import" element={<ImportDrl />} />
+                      <Route path="/account" element={<AccountPage />} />
+                      <Route
+                        path="/admin"
+                        element={
+                          <ProtectedRoute adminOnly>
+                            <AdminPage />
+                          </ProtectedRoute>
+                        }
+                      />
+                    </Routes>
+                  </Layout>
                 </ClientProvider>
               </ProtectedRoute>
             }
