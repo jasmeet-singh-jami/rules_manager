@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
 import { ClientProvider } from './context/ClientContext'
 import { Layout } from './components/layout/Layout'
@@ -26,7 +26,9 @@ export default function App() {
                 <ClientProvider>
                   <Layout>
                     <Routes>
-                      <Route path="/" element={<RuleLibrary />} />
+                      <Route path="/" element={<Navigate to="/rules/noise-suppression" replace />} />
+                      <Route path="/rules" element={<Navigate to="/rules/noise-suppression" replace />} />
+                      <Route path="/rules/:slug" element={<RuleLibrary />} />
                       <Route path="/clients" element={<Clients />} />
                       <Route path="/clients/:id/deployments" element={<Deployments />} />
                       <Route path="/import" element={<ImportDrl />} />
