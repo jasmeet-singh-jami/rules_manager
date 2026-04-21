@@ -136,10 +136,16 @@ export function RuleEditor({ rule, ruleTypes, clients, defaultClientId, defaultR
           {/* Right: DRL preview — sticky so it stays visible while scrolling the form */}
           <div style={{ minWidth: 0, position: 'sticky', top: 0, alignSelf: 'flex-start' }}>
             <DrlPreview
-              ruleName={form.name}
-              conditionRaw={form.condition_raw}
-              actionRaw={form.action_raw}
-              ruleTypeName={activeRuleType?.name}
+              text={[
+                `// ${activeRuleType?.name ?? 'rule type'}`,
+                `rule "${form.name || 'RuleName'}"`,
+                '\twhen',
+                ...(form.condition_raw.trim() ? form.condition_raw.split('\n').map(l => `\t\t${l}`) : ['\t\t// condition here']),
+                '\tthen',
+                ...(form.action_raw.trim() ? form.action_raw.split('\n').map(l => `\t\t${l}`) : ['\t\t// action here']),
+                'end',
+              ].join('\n')}
+              filename={`${form.name || 'rule'}.drl`}
             />
           </div>
         </div>

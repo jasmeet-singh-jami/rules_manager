@@ -1,10 +1,15 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { vi } from 'vitest'
+import type { ReactElement } from 'react'
 import { RuleEditor } from './RuleEditor'
+import { ToastProvider } from '../Toast'
 import * as api from '../../api/client'
 import type { RuleType, Client } from '../../api/client'
 
 vi.mock('../../api/client')
+
+const renderWithProviders = (ui: ReactElement) =>
+  render(<ToastProvider>{ui}</ToastProvider>)
 
 const ruleTypes: RuleType[] = [
   { id: 'rt1', slug: 'alert_classifier', name: 'Alert Classifier', pipeline_stage: 1,
@@ -33,7 +38,7 @@ beforeEach(() => {
 
 describe('RuleEditor', () => {
   it('renders the modal with form fields', () => {
-    render(
+    renderWithProviders(
       <RuleEditor
         rule={{}}
         ruleTypes={ruleTypes}
@@ -51,7 +56,7 @@ describe('RuleEditor', () => {
 
   it('calls onClose when Cancel is clicked', () => {
     const onClose = vi.fn()
-    render(
+    renderWithProviders(
       <RuleEditor rule={{}} ruleTypes={ruleTypes} clients={clients}
         onSave={vi.fn()} onClose={onClose} />
     )
@@ -61,7 +66,7 @@ describe('RuleEditor', () => {
 
   it('calls createRule and onSave when saving a new rule', async () => {
     const onSave = vi.fn()
-    render(
+    renderWithProviders(
       <RuleEditor
         rule={{}}
         ruleTypes={ruleTypes}
