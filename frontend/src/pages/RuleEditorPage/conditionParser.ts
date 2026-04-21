@@ -6,10 +6,11 @@ export function parseCondition(str: string, prefix = ''): CondRow[] {
   if (!str) return [{ field: '', op: '==', value: '' }]
   const parts = str.split(/\s*&&\s*/)
   return parts.map(p => {
-    const m = p.match(/^([^=!<>]+?)\s*(==|!=|<=|>=|<|>|matches|not matches|contains)\s*(.+)$/i)
+    const m = p.match(/^([^=!<>]+?)\s*(==|!=|<=|>=|<|>|not matches|matches|contains)\s*(.+)$/i)
     if (!m) return { field: p.trim(), op: '==', value: '' }
-    let field = m[1].trim()
-    if (prefix && field.startsWith(prefix + '.')) field = field.slice(prefix.length + 1)
+    const field = (prefix && m[1].trim().startsWith(prefix + '.'))
+      ? m[1].trim().slice(prefix.length + 1)
+      : m[1].trim()
     const value = m[3].trim().replace(/^["']|["']$/g, '')
     return { field, op: m[2], value }
   })

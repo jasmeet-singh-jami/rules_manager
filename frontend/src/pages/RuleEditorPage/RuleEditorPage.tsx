@@ -12,6 +12,8 @@ import { useToast } from '../../components/Toast'
 import {
   parseCondition, stringifyCondition, CONDITION_OPS, type CondRow,
 } from './conditionParser'
+
+type CondRowKeyed = { field: string; op: string; value: string; _key: string }
 import { getActionPresets, FIELD_SUGGESTIONS, getPrefix } from './presets'
 
 function buildDrl(rt: RuleType, rule: Partial<Rule>): string {
@@ -68,7 +70,9 @@ export function RuleEditorPage() {
   const [form, setForm] = useState<FormState>(emptyForm)
   const [initial, setInitial] = useState<FormState>(emptyForm)
   const [manual, setManual] = useState(false)
-  const [condRows, setCondRows] = useState<CondRow[]>([{ field: '', op: '==', value: '' }])
+  const [condRows, setCondRows] = useState<CondRowKeyed[]>([
+    { field: '', op: '==', value: '', _key: crypto.randomUUID() }
+  ])
   const [saving, setSaving] = useState(false)
 
   const rt = ruleTypes.find(r => r.slug === slug)
@@ -88,7 +92,8 @@ export function RuleEditorPage() {
       if (found) {
         const f = formFromRule(found)
         setForm(f); setInitial(f)
-        setCondRows(parseCondition(found.condition_raw ?? '', prefix))
+        setCondRows(parseCondition(found.condition_raw ?? '', prefix)
+          .map(r => ({ ...r, _key: crypto.randomUUID() })))
         setManual(false)
       }
     })
@@ -97,16 +102,23 @@ export function RuleEditorPage() {
 
   useEffect(() => {
     if (manual) return
-    setForm(f => ({ ...f, condition_raw: stringifyCondition(condRows, prefix) }))
+    setForm(f => ({ ...f, condition_raw: stringifyCondition(condRows as CondRow[], prefix) }))
   }, [condRows, manual, prefix])
 
   const drlText = useMemo(() => rt ? buildDrl(rt, form) : '', [rt, form])
   const isDirty = JSON.stringify(form) !== JSON.stringify(initial)
 
-  useBlocker(({ currentLocation, nextLocation }) =>
-    isDirty && !saving && currentLocation.pathname !== nextLocation.pathname &&
-    !window.confirm('You have unsaved changes — discard them?')
-  )
+  const blocker = useBlocker(isDirty && !saving)
+
+  useEffect(() => {
+    if (blocker.state === 'blocked') {
+      if (window.confirm('You have unsaved changes — discard them?')) {
+        blocker.proceed()
+      } else {
+        blocker.reset()
+      }
+    }
+  }, [blocker])
 
   useEffect(() => {
     const onBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -232,7 +244,7 @@ export function RuleEditorPage() {
                   Manual DRL
                 </label>
                 {!manual && (
-                  <button className="btn sm" onClick={() => setCondRows(r => [...r, { field: '', op: '==', value: '' }])}>
+                  <button className="btn sm" onClick={() => setCondRows(r => [...r, { field: '', op: '==', value: '', _key: crypto.randomUUID() }])}>
                     <Icon name="plus" /> Add
                   </button>
                 )}
@@ -248,7 +260,7 @@ export function RuleEditorPage() {
             ) : (
               <div className="builder">
                 {condRows.map((row, i) => (
-                  <div key={i}>
+                  <div key={row._key}>
                     <div className="kv-row">
                       <input list="cond-fields" value={row.field}
                              placeholder="field"
