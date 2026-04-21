@@ -11,6 +11,7 @@ import { LoginPage } from './pages/LoginPage'
 import { RegisterPage } from './pages/RegisterPage'
 import { AdminPage } from './pages/AdminPage'
 import { AccountPage } from './pages/AccountPage'
+import { RuleEditorPage } from './pages/RuleEditorPage/RuleEditorPage'
 
 export default function App() {
   return (
@@ -29,6 +30,8 @@ export default function App() {
                       <Route path="/" element={<Navigate to="/rules/noise-suppression" replace />} />
                       <Route path="/rules" element={<Navigate to="/rules/noise-suppression" replace />} />
                       <Route path="/rules/:slug" element={<RuleLibrary />} />
+                      <Route path="/rules/:slug/new" element={<RuleEditorPage />} />
+                      <Route path="/rules/:slug/edit/:id" element={<RuleEditorPage />} />
                       <Route path="/clients" element={<Clients />} />
                       <Route path="/clients/:id/deployments" element={<Deployments />} />
                       <Route path="/import" element={<ImportDrl />} />
