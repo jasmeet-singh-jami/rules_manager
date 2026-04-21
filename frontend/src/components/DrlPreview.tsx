@@ -23,8 +23,12 @@ export function DrlPreview({ text, filename = 'rule.drl', showCopy = true }: Drl
   const { toast } = useToast()
 
   const copy = async () => {
-    await navigator.clipboard.writeText(text)
-    toast('Copied DRL', 'ok')
+    try {
+      await navigator.clipboard.writeText(text)
+      toast('Copied DRL', 'ok')
+    } catch {
+      toast('Copy failed', 'warn')
+    }
   }
 
   return (
