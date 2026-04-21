@@ -33,6 +33,7 @@ export default function App() {
                       <Route path="/rules/:slug/new" element={<RuleEditorPage />} />
                       <Route path="/rules/:slug/edit/:id" element={<RuleEditorPage />} />
                       <Route path="/clients" element={<Clients />} />
+                      <Route path="/deployments" element={<Deployments />} />
                       <Route path="/clients/:id/deployments" element={<Deployments />} />
                       <Route path="/import" element={<ImportDrl />} />
                       <Route path="/account" element={<AccountPage />} />
