@@ -27,8 +27,8 @@ export function LoginPage() {
   }
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', minHeight: '100vh' }}>
-      <div style={{ display: 'grid', placeItems: 'center', padding: 40 }}>
+    <div className="auth-split">
+      <div className="auth-form-col">
         <form className="card" style={{ width: 360 }} onSubmit={handleSubmit}>
           <div className="brand-mark" style={{ marginBottom: 16 }}>P</div>
           <h1 style={{ fontSize: 22, fontWeight: 600, margin: '0 0 4px' }}>Welcome back</h1>
@@ -63,10 +63,7 @@ export function LoginPage() {
           </div>
         </form>
       </div>
-      <div style={{
-        background: 'linear-gradient(135deg, var(--accent), var(--accent-strong))',
-        display: 'grid', placeItems: 'center', color: 'var(--accent-ink)', padding: 40,
-      }}>
+      <div className="auth-hero-col" style={{ background: 'linear-gradient(135deg, var(--accent), var(--accent-strong))', color: 'var(--accent-ink)' }}>
         <div style={{ maxWidth: 380 }}>
           <div style={{ fontSize: 13, opacity: 0.8 }}>Polycloud</div>
           <h2 style={{ fontSize: 28, lineHeight: 1.2, margin: '6px 0 12px', fontWeight: 600 }}>
