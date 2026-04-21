@@ -21,7 +21,7 @@ export function RuleLibrary() {
 
   const [ruleTypes, setRuleTypes] = useState<RuleType[]>([])
   const [rules, setRules] = useState<Rule[]>([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   const [q, setQ] = useState('')
   const [tool, setTool] = useState<string>('')
   const [sel, setSel] = useState<Set<string>>(new Set())
@@ -33,12 +33,14 @@ export function RuleLibrary() {
 
   useEffect(() => {
     if (!rt || !selectedClientId) return
+    let cancelled = false
     setLoading(true)
     setSel(new Set())
     setPage(0)
     getRules({ client_id: selectedClientId, rule_type: rt.id })
-      .then(setRules)
-      .finally(() => setLoading(false))
+      .then(data => { if (!cancelled) setRules(data) })
+      .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
   }, [rt?.id, selectedClientId])
 
   const filtered = useMemo(() => {
@@ -72,14 +74,22 @@ export function RuleLibrary() {
     setSel(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n })
   }
   const toggleAll = () => {
-    setSel(prev => prev.size === pageRules.length ? new Set() : new Set(pageRules.map(r => r.id)))
+    setSel(prev =>
+      pageRules.length > 0 && pageRules.every(r => prev.has(r.id))
+        ? new Set()
+        : new Set(pageRules.map(r => r.id))
+    )
   }
   const onBulkDelete = async () => {
     if (!confirm(`Delete ${sel.size} rule(s)?`)) return
-    await Promise.all(Array.from(sel).map(id => deleteRule(id)))
-    setRules(prev => prev.filter(r => !sel.has(r.id)))
-    setSel(new Set())
-    toast('Rules deleted', 'ok')
+    try {
+      await Promise.all(Array.from(sel).map(id => deleteRule(id)))
+      setRules(prev => prev.filter(r => !sel.has(r.id)))
+      setSel(new Set())
+      toast('Rules deleted', 'ok')
+    } catch {
+      toast('Failed to delete rules', 'danger')
+    }
   }
 
   if (!selectedClientId) {
@@ -136,7 +146,7 @@ export function RuleLibrary() {
               <tr>
                 <th className="col-check">
                   <input type="checkbox" className="cbx"
-                         checked={sel.size === pageRules.length && pageRules.length > 0}
+                         checked={pageRules.length > 0 && pageRules.every(r => sel.has(r.id))}
                          onChange={toggleAll} />
                 </th>
                 <th className="col-enabled">On</th>
