@@ -1,16 +1,18 @@
 import { useEffect, useState } from 'react'
-import { getClients, getRuleTypes, Client, RuleType } from '../api/client'
 import { useAuth } from '../context/AuthContext'
-import { FunctionsPanel } from '../components/FunctionsPanel/FunctionsPanel'
+import { getClients, type Client } from '../api/client'
+import { Icon } from '../components/Icon'
+import { useToast } from '../components/Toast'
+import { PasswordStrength, scorePassword } from './Admin/PasswordStrength'
 
-interface UserWithClients {
+interface AdminUser {
   id: string
   username: string
-  role: string
+  role: 'admin' | 'contributor'
   client_ids: string[]
 }
 
-async function listUsers(token: string): Promise<UserWithClients[]> {
+async function listUsers(token: string): Promise<AdminUser[]> {
   const res = await fetch('/api/admin/users', {
     headers: { Authorization: `Bearer ${token}` },
   })
@@ -34,188 +36,152 @@ async function revokeAccess(userId: string, clientId: string, token: string): Pr
   if (!res.ok) throw new Error('Failed to revoke access')
 }
 
+async function resetPassword(userId: string, token: string, newPw: string): Promise<void> {
+  const res = await fetch(`/api/admin/users/${userId}/password`, {
+    method: 'PATCH',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ new_password: newPw }),
+  })
+  if (!res.ok) throw new Error('Reset failed')
+}
+
 export function AdminPage() {
+  const { toast } = useToast()
   const { token: authToken } = useAuth()
   const token = authToken ?? ''
-  const [users, setUsers] = useState<UserWithClients[]>([])
+
+  const [users, setUsers] = useState<AdminUser[]>([])
   const [clients, setClients] = useState<Client[]>([])
-  const [ruleTypes, setRuleTypes] = useState<RuleType[]>([])
-  const [error, setError] = useState('')
-  const [loading, setLoading] = useState(true)
-  const [resetPasswords, setResetPasswords] = useState<Record<string, string>>({})
-  const [resetStatus, setResetStatus] = useState<Record<string, 'ok' | 'error' | ''>>({})
-  const [expandedRuleType, setExpandedRuleType] = useState<string | null>(null)
+  const [resetFor, setResetFor] = useState<AdminUser | null>(null)
+  const [newPw, setNewPw] = useState('')
 
   useEffect(() => {
-    Promise.all([listUsers(token), getClients(), getRuleTypes()])
-      .then(([u, c, rts]) => { setUsers(u); setClients(c); setRuleTypes(rts) })
-      .catch(() => setError('Failed to load data'))
-      .finally(() => setLoading(false))
-  }, [])
+    listUsers(token).then(setUsers).catch(() => toast('Failed to load users', 'danger'))
+    getClients().then(setClients).catch(() => {})
+  }, [token])
 
-  async function handleGrant(userId: string, clientId: string) {
+  const onToggleAccess = async (user: AdminUser, clientId: string, grant: boolean) => {
     try {
-      await grantAccess(userId, clientId, token)
-      setUsers(prev => prev.map(u =>
-        u.id === userId && !u.client_ids.includes(clientId)
-          ? { ...u, client_ids: [...u.client_ids, clientId] }
-          : u
-      ))
+      if (grant) await grantAccess(user.id, clientId, token)
+      else       await revokeAccess(user.id, clientId, token)
+      setUsers(prev => prev.map(u => u.id === user.id
+        ? { ...u, client_ids: grant
+            ? [...u.client_ids, clientId]
+            : u.client_ids.filter(x => x !== clientId) }
+        : u))
+      toast(grant ? 'Access granted' : 'Access revoked', 'ok')
     } catch {
-      setError('Failed to grant access')
+      toast('Failed', 'danger')
     }
   }
 
-  async function handleRevoke(userId: string, clientId: string) {
+  const onResetConfirm = async () => {
+    if (!resetFor) return
+    const { score } = scorePassword(newPw)
+    if (score < 3) { toast('Password is too weak', 'warn'); return }
     try {
-      await revokeAccess(userId, clientId, token)
-      setUsers(prev => prev.map(u =>
-        u.id === userId
-          ? { ...u, client_ids: u.client_ids.filter(id => id !== clientId) }
-          : u
-      ))
+      await resetPassword(resetFor.id, token, newPw)
+      toast('Password reset', 'ok')
+      setResetFor(null); setNewPw('')
     } catch {
-      setError('Failed to revoke access')
+      toast('Reset failed', 'danger')
     }
   }
-
-  async function handleResetPassword(userId: string) {
-    const pw = resetPasswords[userId] ?? ''
-    setResetStatus(prev => ({ ...prev, [userId]: '' }))
-    try {
-      const res = await fetch(`/api/admin/users/${userId}/password`, {
-        method: 'PATCH',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ new_password: pw }),
-      })
-      if (!res.ok) throw new Error()
-      setResetStatus(prev => ({ ...prev, [userId]: 'ok' }))
-      setResetPasswords(prev => ({ ...prev, [userId]: '' }))
-    } catch {
-      setResetStatus(prev => ({ ...prev, [userId]: 'error' }))
-    }
-  }
-
-  if (loading) return <p className="muted" style={{ margin: '24px 0' }}>Loading…</p>
-  if (error) return <p className="error-msg" style={{ margin: '24px 0' }}>{error}</p>
-
-  const clientMap = Object.fromEntries(clients.map(c => [c.id, c]))
 
   return (
-    <>
-      <h2 style={{ margin: '20px 0 16px' }}>User Management</h2>
-      <div className="glass-card" style={{ overflow: 'hidden' }}>
-        <table>
+    <div className="page">
+      <div className="page-head">
+        <div>
+          <h1 className="page-title">Admin</h1>
+          <div className="page-sub">Manage users and per-client access</div>
+        </div>
+      </div>
+
+      {/* Users card */}
+      <div className="card" style={{ padding: 0, marginBottom: 16 }}>
+        <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--border)',
+                      fontSize: 13, fontWeight: 600 }}>Users</div>
+        <table className="rules">
           <thead>
             <tr>
               <th>Username</th>
               <th>Role</th>
-              <th>Client Access</th>
-              <th>Grant Access</th>
-              <th>Reset Password</th>
+              <th className="col-actions"></th>
             </tr>
           </thead>
           <tbody>
             {users.map(u => (
               <tr key={u.id}>
-                <td><strong>{u.username}</strong></td>
-                <td style={{ textTransform: 'capitalize' }}>{u.role}</td>
+                <td className="cell-name">{u.username}</td>
                 <td>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                    {u.client_ids.length === 0 && <span className="muted">None</span>}
-                    {u.client_ids.map(cid => (
-                      <span key={cid} style={{
-                        background: 'var(--accent-dim)', border: '1px solid rgba(77,142,248,0.25)', borderRadius: 4,
-                        padding: '2px 8px', fontSize: 12, display: 'flex', gap: 4, alignItems: 'center', color: 'var(--accent)'
-                      }}>
-                        {clientMap[cid]?.code ?? cid.slice(0, 8)}
-                        <button
-                          onClick={() => handleRevoke(u.id, cid)}
-                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--danger)', padding: 0, fontSize: 14, lineHeight: 1 }}
-                          title="Revoke access"
-                        >×</button>
-                      </span>
-                    ))}
-                  </div>
+                  <span className={`badge ${u.role === 'admin' ? 'accent' : 'neutral'}`}>{u.role}</span>
                 </td>
-                <td>
-                  <select
-                    defaultValue=""
-                    onChange={e => {
-                      if (e.target.value) { handleGrant(u.id, e.target.value); e.target.value = '' }
-                    }}
-                    style={{ fontSize: 12, padding: '3px 6px' }}
-                  >
-                    <option value="">Add client…</option>
-                    {clients
-                      .filter(c => !u.client_ids.includes(c.id))
-                      .map(c => (
-                        <option key={c.id} value={c.id}>{c.code} — {c.name}</option>
-                      ))}
-                  </select>
-                </td>
-                <td>
-                  <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                    <input
-                      type="password"
-                      placeholder="New password"
-                      value={resetPasswords[u.id] ?? ''}
-                      onChange={e =>
-                        setResetPasswords(prev => ({ ...prev, [u.id]: e.target.value }))
-                      }
-                      style={{ fontSize: 12, padding: '3px 6px', width: 140 }}
-                    />
-                    <button
-                      className="btn-primary"
-                      onClick={() => handleResetPassword(u.id)}
-                      disabled={!resetPasswords[u.id]}
-                      style={{ fontSize: 12, padding: '3px 10px' }}
-                    >
-                      Reset
-                    </button>
-                    {resetStatus[u.id] === 'ok' && (
-                      <span style={{ color: 'var(--ok)', fontSize: 12 }}>✓ Reset</span>
-                    )}
-                    {resetStatus[u.id] === 'error' && (
-                      <span style={{ color: 'var(--danger)', fontSize: 12 }}>Failed</span>
-                    )}
-                  </div>
+                <td className="col-actions">
+                  <button className="btn sm ghost" onClick={() => setResetFor(u)}>
+                    <Icon name="shield" /> Reset password
+                  </button>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-      <h2 style={{ margin: '32px 0 16px' }}>Rule Type Functions & Imports</h2>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {ruleTypes.map(rt => (
-          <div key={rt.id} className="glass-card" style={{ overflow: 'hidden' }}>
-            <button
-              onClick={() => setExpandedRuleType(prev => prev === rt.id ? null : rt.id)}
-              style={{
-                width: '100%', textAlign: 'left', background: 'none', border: 'none',
-                cursor: 'pointer', padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center'
-              }}
-            >
-              <span>
-                <strong>{rt.pipeline_stage}. {rt.name}</strong>
-                <span className="muted" style={{ marginLeft: 10, fontSize: 12 }}>
-                  {rt.functions.length} fn · {rt.imports.length} imports
-                </span>
-              </span>
-              <span style={{ color: 'var(--muted)', fontSize: 18 }}>{expandedRuleType === rt.id ? '▲' : '▼'}</span>
-            </button>
-            {expandedRuleType === rt.id && (
-              <div style={{ padding: '0 16px 16px', borderTop: '1px solid var(--line)' }}>
-                <FunctionsPanel ruleType={rt} />
-              </div>
-            )}
-          </div>
-        ))}
+
+      {/* Access matrix card */}
+      <div className="card" style={{ padding: 0 }}>
+        <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--border)',
+                      fontSize: 13, fontWeight: 600 }}>Client Access</div>
+        <div className="table-scroll">
+          <table className="rules">
+            <thead>
+              <tr>
+                <th>User</th>
+                {clients.map(c => <th key={c.id} style={{ textAlign: 'center' }}>{c.code}</th>)}
+              </tr>
+            </thead>
+            <tbody>
+              {users.map(u => (
+                <tr key={u.id}>
+                  <td className="cell-name">{u.username}</td>
+                  {clients.map(c => {
+                    const checked = u.role === 'admin' || u.client_ids.includes(c.id)
+                    return (
+                      <td key={c.id} style={{ textAlign: 'center' }}>
+                        <input type="checkbox" className="cbx"
+                               checked={checked}
+                               disabled={u.role === 'admin'}
+                               onChange={() => onToggleAccess(u, c.id, !checked)} />
+                      </td>
+                    )
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
-    </>
+
+      {/* Reset password dialog */}
+      {resetFor && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)',
+                      display: 'grid', placeItems: 'center', zIndex: 300 }}>
+          <div className="card" style={{ width: 380 }}>
+            <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>
+              Reset password for {resetFor.username}
+            </div>
+            <div className="field">
+              <label>New password</label>
+              <input type="password" value={newPw} onChange={e => setNewPw(e.target.value)}
+                     placeholder="At least 8 chars with digit and special" />
+              <PasswordStrength value={newPw} />
+            </div>
+            <div className="hstack" style={{ justifyContent: 'flex-end', marginTop: 12 }}>
+              <button className="btn sm ghost" onClick={() => { setResetFor(null); setNewPw('') }}>Cancel</button>
+              <button className="btn sm accent" onClick={onResetConfirm}>Reset</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   )
 }
