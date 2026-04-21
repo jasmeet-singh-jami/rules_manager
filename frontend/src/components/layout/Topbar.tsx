@@ -47,9 +47,12 @@ export function Topbar() {
         ))}
       </div>
       <div className="topbar-right">
-        <div className="topbar-search" title="Command palette (⌘K)">
+        <div className="topbar-search"
+             role="button" tabIndex={0}
+             title="Command palette (⌘K)"
+             onClick={() => window.dispatchEvent(new Event('polycloud:open-palette'))}>
           <Icon name="search" />
-          <input readOnly placeholder="Search rules, clients, deployments…" />
+          <span className="grow muted small">Search rules, clients, deployments…</span>
           <span className="kbd">⌘K</span>
         </div>
         <button className="btn icon ghost" title="Toggle theme" onClick={handleToggleTheme}>
