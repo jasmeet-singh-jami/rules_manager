@@ -1,167 +1,202 @@
-import { useEffect, useRef, useState } from 'react'
-import { RuleType, ParsedFilePreview, getRuleTypes, parseDrlFile, confirmImport } from '../api/client'
-import { useAuth } from '../context/AuthContext'
+import { useEffect, useMemo, useState } from 'react'
 import { useClients } from '../context/ClientContext'
+import {
+  getRuleTypes, getRules, parseDrlFile, confirmImport,
+  type RuleType, type Rule, type ParsedFilePreview,
+} from '../api/client'
+import { Icon } from '../components/Icon'
+import { EmptyState } from '../components/EmptyState'
+import { useToast } from '../components/Toast'
 
 export function ImportDrl() {
-  const { hasEditAccess } = useAuth()
+  const { toast } = useToast()
   const { selectedClientId } = useClients()
+
   const [ruleTypes, setRuleTypes] = useState<RuleType[]>([])
+  const [ruleTypeId, setRuleTypeId] = useState<string>('')
+  const [file, setFile] = useState<File | null>(null)
   const [preview, setPreview] = useState<ParsedFilePreview | null>(null)
-  const [selectedRuleTypeId, setSelectedRuleTypeId] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
-  const [success, setSuccess] = useState('')
-  const [dragging, setDragging] = useState(false)
-  const fileRef = useRef<HTMLInputElement>(null)
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [existingNames, setExistingNames] = useState<Set<string>>(new Set())
+  const [parsing, setParsing] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
 
+  useEffect(() => { getRuleTypes().then(setRuleTypes) }, [])
   useEffect(() => {
-    getRuleTypes().then(rts => {
-      setRuleTypes(rts)
-      if (rts.length > 0) setSelectedRuleTypeId(rts[0].id)
-    }).catch(() => {
-      setError('Failed to load rule types')
-    })
-  }, [])
+    if (!selectedClientId || !ruleTypeId) { setExistingNames(new Set()); return }
+    getRules({ client_id: selectedClientId, rule_type: ruleTypeId })
+      .then(rs => setExistingNames(new Set(rs.map((r: Rule) => r.name))))
+      .catch(() => setExistingNames(new Set()))
+  }, [selectedClientId, ruleTypeId])
 
-  if (!selectedClientId) {
-    return <div className="empty"><div className="empty-title">Pick a client from the sidebar</div></div>
-  }
-
-  async function handleFile(file: File) {
-    if (!file.name.endsWith('.drl')) { setError('Only .drl files are accepted'); return }
-    setError(''); setSuccess(''); setLoading(true)
+  const onChoose = async (f: File) => {
+    setFile(f); setParsing(true); setPreview(null)
     try {
-      const p = await parseDrlFile(file)
+      const p = await parseDrlFile(f)
       setPreview(p)
-    } catch { setError('Failed to parse file — make sure it is a valid .drl file') }
-    finally { setLoading(false) }
+      setSelected(new Set(p.rules.map(r => r.name)))
+    } catch {
+      toast('Parse failed', 'danger')
+    } finally {
+      setParsing(false)
+    }
   }
 
-  async function handleConfirm() {
-    if (!preview || !selectedClientId || !selectedRuleTypeId) return
-    setLoading(true); setError('')
+  const toggle = (name: string) => {
+    setSelected(prev => { const n = new Set(prev); n.has(name) ? n.delete(name) : n.add(name); return n })
+  }
+  const toggleAll = () => {
+    if (!preview) return
+    setSelected(prev => prev.size === preview.rules.length ? new Set() : new Set(preview.rules.map(r => r.name)))
+  }
+
+  const canImport = !!(preview && selectedClientId && ruleTypeId && selected.size > 0)
+  const duplicates = useMemo(
+    () => new Set(preview?.rules.filter(r => existingNames.has(r.name)).map(r => r.name) ?? []),
+    [preview, existingNames],
+  )
+
+  const onConfirm = async () => {
+    if (!preview || !selectedClientId || !ruleTypeId) return
+    setSubmitting(true)
     try {
-      const result = await confirmImport({
-        rule_type_id: selectedRuleTypeId,
+      const payload = {
+        rule_type_id: ruleTypeId,
         functions: preview.functions,
         imports: preview.imports,
-        rules: preview.rules.map(r => ({
-          client_id: selectedClientId,
-          rule_type_id: selectedRuleTypeId,
-          name: r.name,
-          condition_raw: r.condition_raw,
-          action_raw: r.action_raw,
-          required_function_names: r.required_function_names,
-          required_import_statements: r.required_import_statements,
-        })),
-      })
-      setSuccess(`✓ ${result.imported} rule${result.imported !== 1 ? 's' : ''} imported successfully`)
-      setPreview(null)
-    } catch { setError('Import failed') }
-    finally { setLoading(false) }
+        rules: preview.rules
+          .filter(r => selected.has(r.name))
+          .map(r => ({
+            client_id: selectedClientId, rule_type_id: ruleTypeId,
+            name: r.name, condition_raw: r.condition_raw, action_raw: r.action_raw,
+            required_function_names: r.required_function_names ?? [],
+            required_import_statements: r.required_import_statements ?? [],
+          })),
+      }
+      const res = await confirmImport(payload)
+      toast(`Imported ${res.imported} rule(s)`, 'ok')
+      setFile(null); setPreview(null); setSelected(new Set())
+    } catch {
+      toast('Import failed', 'danger')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  if (!selectedClientId) {
+    return <div className="page"><EmptyState icon="clients" title="Pick a client" /></div>
   }
 
   return (
-    <>
-      <div style={{ margin: '20px 0 16px' }}>
-        <h2 style={{ margin: 0 }}>Import DRL</h2>
-        <p className="muted" style={{ margin: '4px 0 0' }}>
-          Upload a .drl file to extract rules and add them to a client's rule library.
-        </p>
+    <div className="page">
+      <div className="page-head">
+        <div>
+          <h1 className="page-title">Import DRL</h1>
+          <div className="page-sub">Upload a .drl file to extract rules into the library</div>
+        </div>
       </div>
 
-      {/* Assignment selectors */}
-      <div className="glass-card" style={{ padding: 16, marginBottom: 16 }}>
-        <p style={{ margin: '0 0 12px', fontWeight: 600 }}>Assign imported rules to:</p>
-        <div className="form-grid">
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+        <div className="card">
+          <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 10 }}>Target</div>
           <div className="form-row">
-            <label htmlFor="imp-ruletype">Rule Type</label>
-            <select id="imp-ruletype" value={selectedRuleTypeId} onChange={e => setSelectedRuleTypeId(e.target.value)}>
-              {ruleTypes.map(rt => <option key={rt.id} value={rt.id}>{rt.pipeline_stage}. {rt.name}</option>)}
-            </select>
-          </div>
-        </div>
-      </div>
-
-      {/* Drop zone */}
-      <div
-        onDragOver={e => { e.preventDefault(); setDragging(true) }}
-        onDragLeave={() => setDragging(false)}
-        onDrop={e => { e.preventDefault(); setDragging(false); const f = e.dataTransfer.files[0]; if (f) handleFile(f) }}
-        onClick={() => fileRef.current?.click()}
-        style={{
-          border: `2px dashed ${dragging ? 'var(--accent)' : 'rgba(124,58,237,0.25)'}`,
-          borderRadius: 16,
-          padding: '44px 20px',
-          textAlign: 'center',
-          cursor: 'pointer',
-          background: dragging ? 'rgba(124,58,237,0.06)' : 'rgba(255,255,255,0.55)',
-          backdropFilter: 'blur(12px)',
-          marginBottom: 16,
-          transition: 'all 0.2s',
-          boxShadow: dragging ? '0 0 0 3px var(--accent-dim)' : 'none',
-        }}
-      >
-        <p style={{ margin: 0, fontSize: 16, color: 'var(--muted)' }}>
-          Drop a .drl file here or <strong style={{ color: 'var(--accent)' }}>click to browse</strong>
-        </p>
-        <p style={{ margin: '6px 0 0', fontSize: 12 }} className="muted">
-          One file at a time. The file will be parsed and previewed before importing.
-        </p>
-        <input ref={fileRef} type="file" accept=".drl" style={{ display: 'none' }}
-          onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f) }} />
-      </div>
-
-      {error && <p className="error-msg">{error}</p>}
-      {success && <p style={{ color: 'var(--ok)', fontWeight: 600 }}>{success}</p>}
-      {loading && <p className="muted">Processing…</p>}
-
-      {/* Preview table */}
-      {preview && (
-        <div className="glass-card" style={{ overflow: 'hidden' }}>
-          <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--line)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div>
-              <strong>{preview.filename}</strong>
-              <span className="muted" style={{ marginLeft: 10, fontSize: 12 }}>
-                {preview.rule_count} rule{preview.rule_count !== 1 ? 's' : ''} · package: {preview.package}
-              </span>
-            </div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button className="btn-outline btn-sm" onClick={() => setPreview(null)}>Clear</button>
-              {!hasEditAccess(selectedClientId) && <p className="error-msg">You do not have edit access to this client.</p>}
-              <button className="btn-primary btn-sm" onClick={handleConfirm} disabled={loading || !hasEditAccess(selectedClientId)}>
-                Confirm Import
-              </button>
+            <div className="field">
+              <label>Rule type</label>
+              <select className="select" value={ruleTypeId}
+                      onChange={e => setRuleTypeId(e.target.value)}>
+                <option value="">Choose rule type…</option>
+                {ruleTypes.map(rt => <option key={rt.id} value={rt.id}>{rt.name}</option>)}
+              </select>
             </div>
           </div>
-          <table>
-            <thead>
-              <tr><th>#</th><th>Rule Name</th><th>Condition (when)</th><th>Action (then)</th><th>Functions</th></tr>
-            </thead>
-            <tbody>
-              {preview.rules.map((r, i) => (
-                <tr key={i}>
-                  <td className="muted">{i + 1}</td>
-                  <td><strong>{r.name}</strong></td>
-                  <td><code style={{ fontSize: 12 }}>{r.condition_raw.slice(0, 80)}{r.condition_raw.length > 80 ? '…' : ''}</code></td>
-                  <td><code style={{ fontSize: 12 }}>{r.action_raw.slice(0, 60)}{r.action_raw.length > 60 ? '…' : ''}</code></td>
-                  <td>
-                    {r.required_function_names.length === 0
-                      ? <span className="muted" style={{ fontSize: 12 }}>—</span>
-                      : <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
-                          {r.required_function_names.map(fn => (
-                            <span key={fn} style={{ fontSize: 11, background: 'rgba(124,58,237,0.1)', color: 'var(--accent)', borderRadius: 4, padding: '1px 6px', fontFamily: 'monospace' }}>{fn}</span>
-                          ))}
-                        </div>
-                    }
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div className="divider" />
+          <div style={{
+            border: '2px dashed var(--border-strong)', borderRadius: 10,
+            padding: '32px 20px', textAlign: 'center', background: 'var(--bg-sunken)',
+          }}
+          onDragOver={e => { e.preventDefault() }}
+          onDrop={e => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) onChoose(f) }}>
+            <div style={{ margin: '0 auto 10px', width: 40, height: 40, borderRadius: 10,
+                          background: 'var(--accent-soft)', color: 'var(--accent)',
+                          display: 'grid', placeItems: 'center' }}>
+              <Icon name="upload" size={20} />
+            </div>
+            <div style={{ fontWeight: 500, marginBottom: 4 }}>Drop .drl file here</div>
+            <div className="small muted" style={{ marginBottom: 12 }}>or click to choose</div>
+            <label className="btn sm" style={{ cursor: 'pointer' }}>
+              Choose file
+              <input type="file" accept=".drl,.txt" hidden
+                     onChange={e => e.target.files?.[0] && onChoose(e.target.files[0])} />
+            </label>
+            {file && <div className="small muted" style={{ marginTop: 10 }}>{file.name}</div>}
+          </div>
         </div>
-      )}
-    </>
+
+        <div className="card" style={{ padding: 0 }}>
+          <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--border)',
+                        display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ fontSize: 13, fontWeight: 600 }}>Preview</div>
+            {preview && (
+              <span className="tb-meta">{selected.size} of {preview.rules.length} selected</span>
+            )}
+          </div>
+          {parsing ? (
+            <div className="empty">Parsing…</div>
+          ) : !preview ? (
+            <EmptyState icon="upload" title="Upload to preview"
+              body="Rules extracted from the DRL file will appear here." />
+          ) : (
+            <>
+              <div style={{ padding: '10px 16px', borderBottom: '1px solid var(--border)',
+                            display: 'flex', gap: 16, fontSize: 12.5, color: 'var(--muted)' }}>
+                <span>Package: <span className="mono">{preview.package}</span></span>
+                <span>Functions: {preview.functions.length}</span>
+                <span>Imports: {preview.imports.length}</span>
+              </div>
+              <table className="rules">
+                <thead>
+                  <tr>
+                    <th className="col-check">
+                      <input type="checkbox" className="cbx"
+                             checked={selected.size === preview.rules.length && preview.rules.length > 0}
+                             onChange={toggleAll} />
+                    </th>
+                    <th>Rule name</th>
+                    <th>Condition</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {preview.rules.map(r => (
+                    <tr key={r.name}>
+                      <td className="col-check">
+                        <input type="checkbox" className="cbx"
+                               checked={selected.has(r.name)}
+                               onChange={() => toggle(r.name)} />
+                      </td>
+                      <td>
+                        <div className="cell-name">{r.name}</div>
+                        {duplicates.has(r.name) && (
+                          <span className="badge warn" style={{ marginTop: 4 }}>
+                            <Icon name="alertTri" size={11} /> already exists
+                          </span>
+                        )}
+                      </td>
+                      <td><div className="cell-cond">{r.condition_raw || <span className="muted">—</span>}</div></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <div style={{ padding: 12, borderTop: '1px solid var(--border)',
+                            display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+                <button className="btn sm ghost" onClick={() => { setPreview(null); setFile(null) }}>Clear</button>
+                <button className="btn sm accent" disabled={!canImport || submitting} onClick={onConfirm}>
+                  {submitting ? 'Importing…' : `Import ${selected.size} rule(s)`}
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
   )
 }
