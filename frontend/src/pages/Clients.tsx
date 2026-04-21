@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Client, getClients, createClient, updateClient, deleteClient } from '../api/client'
 import { useAuth } from '../context/AuthContext'
+import { EmptyState } from '../components/EmptyState'
 
 interface FormState { code: string; name: string; description: string }
 const empty: FormState = { code: '', name: '', description: '' }
@@ -56,91 +57,108 @@ export function Clients() {
   }
 
   return (
-    <>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '20px 0 16px' }}>
-        <h2 style={{ margin: 0 }}>Clients</h2>
-        <button className="btn-primary" onClick={openNew}>+ New Client</button>
+    <div className="page">
+      <div className="page-head">
+        <h1 className="page-title">Clients</h1>
+        <div className="page-actions">
+          <button className="btn accent" onClick={openNew}>+ New Client</button>
+        </div>
       </div>
 
       {loading && <p className="muted">Loading…</p>}
 
-      <div className="glass-card" style={{ overflow: 'hidden' }}>
-        <table>
+      <div className="table-wrap">
+        <table className="rules">
           <thead>
-            <tr><th>Code</th><th>Name</th><th>Description</th><th>Actions</th></tr>
+            <tr>
+              <th>Code</th>
+              <th>Name</th>
+              <th>Description</th>
+              <th>Actions</th>
+            </tr>
           </thead>
           <tbody>
             {clients.map(c => (
               <tr key={c.id}>
-                <td><strong>{c.code}</strong></td>
-                <td>{c.name}</td>
+                <td className="cell-id"><strong>{c.code}</strong></td>
+                <td className="cell-name">{c.name}</td>
                 <td className="muted">{c.description ?? '—'}</td>
                 <td>
                   <span style={{ display: 'flex', gap: 6 }}>
                     <Link to={`/clients/${c.id}/deployments`}>
-                      <button className="btn-outline btn-sm">Deployments</button>
+                      <button className="btn sm ghost">Deployments</button>
                     </Link>
                     {hasEditAccess(c.id) && (
-                      <button className="btn-outline btn-sm" onClick={() => openEdit(c)}>Edit</button>
+                      <button className="btn sm ghost" onClick={() => openEdit(c)}>Edit</button>
                     )}
                     {hasEditAccess(c.id) && (
-                      <button className="btn-danger btn-sm" onClick={() => handleDelete(c)}>Delete</button>
+                      <button className="btn sm danger-ghost" onClick={() => handleDelete(c)}>Delete</button>
                     )}
                   </span>
                 </td>
               </tr>
             ))}
             {!loading && clients.length === 0 && (
-              <tr><td colSpan={4} style={{ textAlign: 'center', color: 'var(--muted)', padding: 24 }}>
-                No clients yet. Click "+ New Client" to add one.
-              </td></tr>
+              <tr>
+                <td colSpan={4} style={{ padding: 0 }}>
+                  <EmptyState
+                    icon="folder"
+                    title="No clients yet"
+                    body='Click "+ New Client" to add one.'
+                    actions={<button className="btn accent" onClick={openNew}>+ New Client</button>}
+                  />
+                </td>
+              </tr>
             )}
           </tbody>
         </table>
       </div>
 
       {modal && (
-        <div className="modal-overlay" onClick={closeModal}>
+        <div className="modal-backdrop" onClick={closeModal}>
           <div className="modal" onClick={e => e.stopPropagation()}>
             <h2>{modal === 'new' ? 'New Client' : `Edit: ${(modal as Client).name}`}</h2>
-            {error && <p className="error-msg">{error}</p>}
-            <div className="form-row">
+            {error && <div className="callout danger small" style={{ marginBottom: 14 }}>{error}</div>}
+            <div className="field" style={{ marginBottom: 12 }}>
               <label htmlFor="client-code">Client Code</label>
               <input
                 id="client-code"
+                type="text"
                 placeholder="e.g. INFY"
                 value={form.code}
                 disabled={modal !== 'new'}
                 onChange={e => setForm(f => ({ ...f, code: e.target.value.toUpperCase() }))}
               />
             </div>
-            <div className="form-row">
+            <div className="field" style={{ marginBottom: 12 }}>
               <label htmlFor="client-name">Name</label>
               <input
                 id="client-name"
+                type="text"
                 placeholder="Display name"
                 value={form.name}
                 onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
               />
             </div>
-            <div className="form-row">
+            <div className="field" style={{ marginBottom: 20 }}>
               <label htmlFor="client-desc">Description</label>
               <input
                 id="client-desc"
+                type="text"
                 placeholder="Optional"
                 value={form.description}
                 onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
               />
             </div>
-            <div className="form-actions">
-              <button className="btn-outline" onClick={closeModal}>Cancel</button>
-              <button className="btn-primary" onClick={handleSave} disabled={saving}>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button className="btn ghost" onClick={closeModal}>Cancel</button>
+              <button className="btn accent" onClick={handleSave} disabled={saving}>
                 {saving ? 'Saving…' : 'Save'}
               </button>
             </div>
           </div>
         </div>
       )}
-    </>
+    </div>
   )
 }

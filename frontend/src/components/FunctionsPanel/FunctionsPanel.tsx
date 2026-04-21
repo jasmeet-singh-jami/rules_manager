@@ -74,63 +74,83 @@ export function FunctionsPanel({ ruleType }: Props) {
   }
 
   return (
-    <div style={{ padding: '12px 0' }}>
-      {error && <p className="error-msg" style={{ margin: '0 0 10px' }}>{error}</p>}
+    <div className="card" style={{ padding: '16px 20px' }}>
+      {error && <div className="callout danger small" style={{ marginBottom: 12 }}>{error}</div>}
 
       {/* Functions */}
       <div style={{ marginBottom: 20 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
           <strong style={{ fontSize: 13 }}>Functions ({functions.length})</strong>
-          <button className="btn-outline btn-sm" onClick={() => setAddingFn(v => !v)}>
+          <button className="btn sm ghost" onClick={() => setAddingFn(v => !v)}>
             {addingFn ? 'Cancel' : '+ Add Function'}
           </button>
         </div>
 
         {addingFn && (
-          <div style={{ background: 'rgba(124,58,237,0.04)', border: '1px solid var(--line)', borderRadius: 8, padding: 12, marginBottom: 10 }}>
-            <div className="form-row" style={{ marginBottom: 8 }}>
+          <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: 12, marginBottom: 10 }}>
+            <div className="field" style={{ marginBottom: 8 }}>
               <label style={{ fontSize: 12 }}>Name</label>
-              <input value={newFnName} onChange={e => setNewFnName(e.target.value)} placeholder="e.g. extractPort" style={{ fontSize: 12 }} />
+              <input
+                type="text"
+                value={newFnName}
+                onChange={e => setNewFnName(e.target.value)}
+                placeholder="e.g. extractPort"
+                style={{ fontSize: 12 }}
+              />
             </div>
-            <div className="form-row" style={{ marginBottom: 8 }}>
+            <div className="field" style={{ marginBottom: 10 }}>
               <label style={{ fontSize: 12 }}>Body</label>
-              <textarea rows={5} value={newFnBody} onChange={e => setNewFnBody(e.target.value)}
-                placeholder="function extractPort(String s) { ... }" style={{ fontSize: 12, fontFamily: 'monospace' }} />
+              <textarea
+                rows={5}
+                value={newFnBody}
+                onChange={e => setNewFnBody(e.target.value)}
+                placeholder="function extractPort(String s) { ... }"
+                style={{ fontSize: 12, fontFamily: 'monospace' }}
+              />
             </div>
-            <button className="btn-primary btn-sm" onClick={handleAddFunction}>Save Function</button>
+            <button className="btn sm accent" onClick={handleAddFunction}>Save Function</button>
           </div>
         )}
 
         {editFn && (
-          <div style={{ background: 'rgba(124,58,237,0.04)', border: '1px solid var(--line)', borderRadius: 8, padding: 12, marginBottom: 10 }}>
-            <div className="form-row" style={{ marginBottom: 8 }}>
+          <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: 12, marginBottom: 10 }}>
+            <div className="field" style={{ marginBottom: 8 }}>
               <label style={{ fontSize: 12 }}>Name</label>
-              <input value={editFn.name} onChange={e => setEditFn(f => f && { ...f, name: e.target.value })} style={{ fontSize: 12 }} />
+              <input
+                type="text"
+                value={editFn.name}
+                onChange={e => setEditFn(f => f && { ...f, name: e.target.value })}
+                style={{ fontSize: 12 }}
+              />
             </div>
-            <div className="form-row" style={{ marginBottom: 8 }}>
+            <div className="field" style={{ marginBottom: 10 }}>
               <label style={{ fontSize: 12 }}>Body</label>
-              <textarea rows={6} value={editFn.body} onChange={e => setEditFn(f => f && { ...f, body: e.target.value })}
-                style={{ fontSize: 12, fontFamily: 'monospace' }} />
+              <textarea
+                rows={6}
+                value={editFn.body}
+                onChange={e => setEditFn(f => f && { ...f, body: e.target.value })}
+                style={{ fontSize: 12, fontFamily: 'monospace' }}
+              />
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
-              <button className="btn-primary btn-sm" onClick={handleUpdateFunction}>Update</button>
-              <button className="btn-outline btn-sm" onClick={() => setEditFn(null)}>Cancel</button>
+              <button className="btn sm accent" onClick={handleUpdateFunction}>Update</button>
+              <button className="btn sm ghost" onClick={() => setEditFn(null)}>Cancel</button>
             </div>
           </div>
         )}
 
         {functions.length === 0 && !addingFn && <p className="muted" style={{ fontSize: 12 }}>No functions defined.</p>}
         {functions.map(fn => (
-          <div key={fn.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '6px 0', borderBottom: '1px solid var(--line)' }}>
+          <div key={fn.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '6px 0', borderBottom: '1px solid var(--border)' }}>
             <div style={{ minWidth: 0, flex: 1 }}>
               <code style={{ fontSize: 12, color: 'var(--accent)' }}>{fn.name}</code>
-              <pre style={{ margin: '2px 0 0', fontSize: 11, whiteSpace: 'pre-wrap', wordBreak: 'break-all', color: 'var(--muted)', maxHeight: 80, overflow: 'hidden' }}>
+              <pre className="code-body" style={{ margin: '4px 0 0', fontSize: 11, maxHeight: 80, overflow: 'hidden', padding: '6px 10px' }}>
                 {fn.body.slice(0, 200)}{fn.body.length > 200 ? '…' : ''}
               </pre>
             </div>
             <div style={{ display: 'flex', gap: 6, marginLeft: 12, flexShrink: 0 }}>
-              <button className="btn-outline btn-sm" onClick={() => setEditFn(fn)} style={{ fontSize: 11 }}>Edit</button>
-              <button className="btn-outline btn-sm" onClick={() => handleDeleteFunction(fn.id)} style={{ fontSize: 11, color: 'var(--danger)' }}>Delete</button>
+              <button className="btn sm ghost" onClick={() => setEditFn(fn)} style={{ fontSize: 11 }}>Edit</button>
+              <button className="btn sm ghost" onClick={() => handleDeleteFunction(fn.id)} style={{ fontSize: 11, color: 'var(--danger)' }}>Delete</button>
             </div>
           </div>
         ))}
@@ -138,22 +158,27 @@ export function FunctionsPanel({ ruleType }: Props) {
 
       {/* Imports */}
       <div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-          <strong style={{ fontSize: 13 }}>Imports & Globals ({imports.length})</strong>
-          <button className="btn-outline btn-sm" onClick={() => setAddingImp(v => !v)}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+          <strong style={{ fontSize: 13 }}>Imports &amp; Globals ({imports.length})</strong>
+          <button className="btn sm ghost" onClick={() => setAddingImp(v => !v)}>
             {addingImp ? 'Cancel' : '+ Add Import'}
           </button>
         </div>
 
         {addingImp && (
-          <div style={{ background: 'rgba(124,58,237,0.04)', border: '1px solid var(--line)', borderRadius: 8, padding: 12, marginBottom: 10 }}>
-            <div className="form-row" style={{ marginBottom: 8 }}>
+          <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: 12, marginBottom: 10 }}>
+            <div className="field" style={{ marginBottom: 8 }}>
               <label style={{ fontSize: 12 }}>Statement</label>
-              <input value={newImpStmt} onChange={e => setNewImpStmt(e.target.value)}
-                placeholder="import com.example.dto.AlertDto;" style={{ fontSize: 12, fontFamily: 'monospace' }} />
+              <input
+                type="text"
+                value={newImpStmt}
+                onChange={e => setNewImpStmt(e.target.value)}
+                placeholder="import com.example.dto.AlertDto;"
+                style={{ fontSize: 12, fontFamily: 'monospace' }}
+              />
             </div>
-            <div style={{ display: 'flex', gap: 16, marginBottom: 8, alignItems: 'center' }}>
-              <div className="form-row" style={{ marginBottom: 0 }}>
+            <div style={{ display: 'flex', gap: 16, marginBottom: 10, alignItems: 'center' }}>
+              <div className="field" style={{ marginBottom: 0 }}>
                 <label style={{ fontSize: 12 }}>Kind</label>
                 <select value={newImpKind} onChange={e => setNewImpKind(e.target.value as 'import' | 'global')} style={{ fontSize: 12 }}>
                   <option value="import">import</option>
@@ -165,16 +190,20 @@ export function FunctionsPanel({ ruleType }: Props) {
                 Always include (shared)
               </label>
             </div>
-            <button className="btn-primary btn-sm" onClick={handleAddImport}>Save Import</button>
+            <button className="btn sm accent" onClick={handleAddImport}>Save Import</button>
           </div>
         )}
 
         {imports.length === 0 && !addingImp && <p className="muted" style={{ fontSize: 12 }}>No imports defined.</p>}
         {imports.map(imp => (
-          <div key={imp.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', borderBottom: '1px solid var(--line)' }}>
+          <div key={imp.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', borderBottom: '1px solid var(--border)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flex: 1 }}>
-              <span style={{ fontSize: 11, background: imp.kind === 'global' ? 'rgba(234,179,8,0.15)' : 'rgba(124,58,237,0.1)',
-                color: imp.kind === 'global' ? '#a16207' : 'var(--accent)', borderRadius: 4, padding: '1px 6px', flexShrink: 0 }}>
+              <span style={{
+                fontSize: 11,
+                background: imp.kind === 'global' ? 'rgba(234,179,8,0.15)' : 'rgba(124,58,237,0.1)',
+                color: imp.kind === 'global' ? '#a16207' : 'var(--accent)',
+                borderRadius: 4, padding: '1px 6px', flexShrink: 0,
+              }}>
                 {imp.kind}
               </span>
               <code style={{ fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{imp.statement}</code>
@@ -187,7 +216,7 @@ export function FunctionsPanel({ ruleType }: Props) {
                 <input type="checkbox" checked={imp.is_shared} onChange={() => handleToggleShared(imp)} style={{ width: 'auto' }} />
                 shared
               </label>
-              <button className="btn-outline btn-sm" onClick={() => handleDeleteImport(imp.id)} style={{ fontSize: 11, color: 'var(--danger)' }}>Delete</button>
+              <button className="btn sm ghost" onClick={() => handleDeleteImport(imp.id)} style={{ fontSize: 11, color: 'var(--danger)' }}>Delete</button>
             </div>
           </div>
         ))}
