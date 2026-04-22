@@ -883,46 +883,6 @@ tr:hover .row-actions { opacity: 1; }
 .tok-op    { color: var(--muted); }
 
 /* =========================================================
-   Tweaks panel
-   ========================================================= */
-.tweaks {
-  position: fixed;
-  bottom: 20px; right: 20px;
-  width: 320px;
-  background: var(--bg-elev);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-lg);
-  z-index: 100;
-  overflow: hidden;
-  display: none;
-}
-.tweaks.open { display: block; }
-.tweaks-head {
-  padding: 12px 14px;
-  display: flex; align-items: center; justify-content: space-between;
-  border-bottom: 1px solid var(--border);
-}
-.tweaks-title { font-size: 13px; font-weight: 600; color: var(--ink); }
-.tweaks-body { padding: 14px; display: flex; flex-direction: column; gap: 14px; }
-.tweak-row { display: flex; flex-direction: column; gap: 6px; }
-.tweak-row > label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; font-weight: 600; }
-.color-row { display: flex; gap: 6px; flex-wrap: wrap; }
-.color-sw {
-  width: 26px; height: 26px;
-  border-radius: 50%;
-  cursor: pointer;
-  border: 2px solid transparent;
-  box-shadow: 0 0 0 1px var(--border);
-  transition: transform .1s;
-}
-.color-sw:hover { transform: scale(1.08); }
-.color-sw.active {
-  border-color: var(--bg-elev);
-  box-shadow: 0 0 0 2px var(--ink);
-}
-
-/* =========================================================
    Utilities
    ========================================================= */
 .hstack { display: flex; align-items: center; gap: 8px; }
