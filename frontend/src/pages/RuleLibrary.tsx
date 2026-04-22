@@ -71,7 +71,7 @@ export function RuleLibrary() {
   }
 
   const toggleSel = (id: string) => {
-    setSel(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n })
+    setSel(prev => { const n = new Set(prev); if (n.has(id)) { n.delete(id) } else { n.add(id) } return n })
   }
   const toggleAll = () => {
     setSel(prev =>

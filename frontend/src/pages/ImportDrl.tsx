@@ -43,7 +43,7 @@ export function ImportDrl() {
   }
 
   const toggle = (name: string) => {
-    setSelected(prev => { const n = new Set(prev); n.has(name) ? n.delete(name) : n.add(name); return n })
+    setSelected(prev => { const n = new Set(prev); if (n.has(name)) { n.delete(name) } else { n.add(name) } return n })
   }
   const toggleAll = () => {
     if (!preview) return
