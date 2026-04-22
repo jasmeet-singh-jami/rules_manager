@@ -3,6 +3,7 @@ import { Command } from 'cmdk'
 import { useNavigate } from 'react-router-dom'
 import { getRules, getClients, getRuleTypes,
          type Rule, type RuleType, type Client } from '../../api/client'
+import { useToast } from '../Toast'
 import './CommandPalette.css'
 
 interface PaletteProps {
@@ -12,6 +13,7 @@ interface PaletteProps {
 
 export function CommandPalette({ open, onClose }: PaletteProps) {
   const navigate = useNavigate()
+  const { toast } = useToast()
   const [rules, setRules] = useState<Rule[]>([])
   const [clients, setClients] = useState<Client[]>([])
   const [ruleTypes, setRuleTypes] = useState<RuleType[]>([])
@@ -20,8 +22,8 @@ export function CommandPalette({ open, onClose }: PaletteProps) {
     if (!open) return
     Promise.all([getRules(), getClients(), getRuleTypes()])
       .then(([rs, cs, rts]) => { setRules(rs); setClients(cs); setRuleTypes(rts) })
-      .catch(() => {})
-  }, [open])
+      .catch(() => toast('Failed to load search data', 'warn'))
+  }, [open, toast])
 
   const go = useCallback((path: string) => { onClose(); navigate(path) }, [navigate, onClose])
 

@@ -50,7 +50,8 @@ export function Topbar() {
         <div className="topbar-search"
              role="button" tabIndex={0}
              title="Command palette (⌘K)"
-             onClick={() => window.dispatchEvent(new Event('polycloud:open-palette'))}>
+             onClick={() => window.dispatchEvent(new Event('polycloud:open-palette'))}
+             onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); window.dispatchEvent(new Event('polycloud:open-palette')) } }}>
           <Icon name="search" />
           <span className="grow muted small">Search rules, clients, deployments…</span>
           <span className="kbd">⌘K</span>
