@@ -45,7 +45,8 @@
       "Bash(ls -d worktrees)",
       "Bash(grep -i \"worktree.*director\" CLAUDE.md)",
       "Read(//c/Users/jasme/.config/superpowers/worktrees/rules-generator/security-hardening/backend/**)",
-      "Bash(ls venv *)"
+      "Bash(ls venv *)",
+      "WebFetch(domain:api.anthropic.com)"
     ],
     "shell": "allow",
     "file_system": "allow",
