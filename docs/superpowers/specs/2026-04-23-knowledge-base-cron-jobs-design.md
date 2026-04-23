@@ -160,7 +160,7 @@ Upload functions use `FormData` (not JSON body); the `request` helper is bypasse
 
 | Action | Required permission |
 |---|---|
-| List / download | Any authenticated user who can see the client |
+| List / download | Admin: all clients. Contributor: only their assigned clients (same visibility as rules) |
 | Upload | Edit access for that client (`check_client_access` dependency) |
 | Delete | Edit access for that client |
 
