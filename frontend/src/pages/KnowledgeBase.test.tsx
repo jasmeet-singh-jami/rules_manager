@@ -20,7 +20,7 @@ vi.mock('../context/AuthContext', () => ({
 vi.mock('../components/Toast', () => ({ useToast: () => ({ toast: vi.fn() }) }))
 
 const { getKnowledgeDocs } = vi.hoisted(() => ({
-  getKnowledgeDocs: vi.fn(async () => []),
+  getKnowledgeDocs: vi.fn(),
 }))
 
 vi.mock('../api/client', () => ({
