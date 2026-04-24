@@ -193,7 +193,7 @@ class KnowledgeDocument(Base):
     uploaded_by = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     created_at = Column(TIMESTAMP(timezone=True), default=utcnow, nullable=False)
 
-    client = relationship("Client")
+    client = relationship("Client", viewonly=True)
 
 
 class CronJob(Base):
@@ -210,4 +210,4 @@ class CronJob(Base):
     uploaded_by = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     created_at = Column(TIMESTAMP(timezone=True), default=utcnow, nullable=False)
 
-    client = relationship("Client")
+    client = relationship("Client", viewonly=True)
