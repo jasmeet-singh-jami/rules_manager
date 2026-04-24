@@ -2,14 +2,14 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useClients } from '../context/ClientContext'
 import {
-  getRuleTypes, getRules, getDeployments,
-  type RuleType, type Rule, type Deployment,
+  getRuleTypes, getRules, getDeployments, getKnowledgeDocs, getCronJobs,
+  type RuleType, type Rule, type Deployment, type KnowledgeDocument, type CronJob,
 } from '../api/client'
 import { Icon, type IconName } from '../components/Icon'
 
-function StatCard({ label, value, icon, sub }: { label: string; value: string | number; icon: IconName; sub?: string }) {
+function StatCard({ label, value, icon, sub, onClick }: { label: string; value: string | number; icon: IconName; sub?: string; onClick?: () => void }) {
   return (
-    <div className="stat">
+    <div className="stat" onClick={onClick} style={onClick ? { cursor: 'pointer' } : undefined}>
       <div className="stat-label"><Icon name={icon} size={13} /> {label}</div>
       <div className="stat-value">{value}</div>
       {sub && <div className="stat-delta">{sub}</div>}
@@ -19,40 +19,44 @@ function StatCard({ label, value, icon, sub }: { label: string; value: string | 
 
 export function Overview() {
   const navigate = useNavigate()
-  const { selectedClientId, clients } = useClients()
+  const { selectedClientId, setSelectedClientId, clients } = useClients()
   const [ruleTypes, setRuleTypes] = useState<RuleType[]>([])
   const [rules, setRules] = useState<Rule[]>([])
   const [deployments, setDeployments] = useState<Deployment[]>([])
+  const [knowledgeDocs, setKnowledgeDocs] = useState<KnowledgeDocument[]>([])
+  const [cronJobs, setCronJobs] = useState<CronJob[]>([])
 
   useEffect(() => {
-    getRuleTypes().then(rts => setRuleTypes(rts))
-    Promise.all(clients.map(c => getDeployments(c.id).catch(() => [])))
-      .then(arrs => setDeployments(arrs.flat()))
+    getRuleTypes().then(ruleTypeData => setRuleTypes(ruleTypeData))
+    Promise.all(clients.map(client => getDeployments(client.id).catch(() => [])))
+      .then(arrays => setDeployments(arrays.flat()))
+    getKnowledgeDocs().then(setKnowledgeDocs).catch(() => {})
+    getCronJobs().then(setCronJobs).catch(() => {})
   }, [clients])
 
   useEffect(() => {
-    if (!selectedClientId) { setRules([]); return }
+    if (!selectedClientId) {
+      setRules([])
+      return
+    }
     getRules({ client_id: selectedClientId }).then(setRules).catch(() => {})
   }, [selectedClientId])
 
-  const activeRules = rules.filter(r => r.enabled).length
-  const last30d = deployments.filter(d => {
-    const when = new Date(d.created_at).getTime()
-    return Date.now() - when < 30 * 24 * 60 * 60 * 1000
-  }).length
+  const activeRules = rules.filter(rule => rule.enabled).length
 
   const byType = useMemo(() => {
-    const max = Math.max(1, ...ruleTypes.map(rt => rules.filter(r => r.rule_type_id === rt.id).length))
-    return ruleTypes.map(rt => ({
-      rt, count: rules.filter(r => r.rule_type_id === rt.id).length,
-      pct: rules.filter(r => r.rule_type_id === rt.id).length / max * 100,
+    const max = Math.max(1, ...ruleTypes.map(ruleType => rules.filter(rule => rule.rule_type_id === ruleType.id).length))
+    return ruleTypes.map(ruleType => ({
+      rt: ruleType,
+      count: rules.filter(rule => rule.rule_type_id === ruleType.id).length,
+      pct: rules.filter(rule => rule.rule_type_id === ruleType.id).length / max * 100,
     }))
   }, [ruleTypes, rules])
 
   const activity = useMemo(() => {
-    const rItems = rules.map(r => ({ kind: 'rule' as const, at: r.updated_at, what: r.name }))
-    const dItems = deployments.map(d => ({ kind: 'deploy' as const, at: d.created_at, what: `v${d.version} · ${d.status}` }))
-    return [...rItems, ...dItems].sort((a, b) => b.at.localeCompare(a.at)).slice(0, 10)
+    const ruleItems = rules.map(rule => ({ kind: 'rule' as const, at: rule.updated_at, what: rule.name }))
+    const deploymentItems = deployments.map(deployment => ({ kind: 'deploy' as const, at: deployment.created_at, what: `v${deployment.version} · ${deployment.status}` }))
+    return [...ruleItems, ...deploymentItems].sort((a, b) => b.at.localeCompare(a.at)).slice(0, 10)
   }, [rules, deployments])
 
   return (
@@ -62,21 +66,34 @@ export function Overview() {
           <h1 className="page-title">Overview</h1>
           <div className="page-sub">Activity across clients and rule types</div>
         </div>
+        <div className="page-actions">
+          <select
+            className="select"
+            value={selectedClientId ?? ''}
+            aria-label="Overview client"
+            onChange={e => setSelectedClientId(e.target.value || null)}
+          >
+            <option value="">Choose client...</option>
+            {clients.map(client => (
+              <option key={client.id} value={client.id}>{client.code} - {client.name}</option>
+            ))}
+          </select>
+        </div>
       </div>
 
       <div className="stats">
+        <StatCard label="Clients" value={clients.length} icon="clients" onClick={() => navigate('/clients')} />
         <StatCard label="Total rules" value={rules.length} icon="rules"
-                  sub={`${activeRules} enabled`} />
-        <StatCard label="Clients" value={clients.length} icon="clients" />
-        <StatCard label="Deployments (30d)" value={last30d} icon="deploy" />
-        <StatCard label="Rule types" value={ruleTypes.length} icon="layers" />
+                  sub={`${activeRules} enabled`} onClick={() => navigate('/rules')} />
+        <StatCard label="Knowledge Base" value={knowledgeDocs.length} icon="folder" onClick={() => navigate('/knowledge/integrations')} />
+        <StatCard label="Total crons" value={cronJobs.length} icon="clock" onClick={() => navigate('/cron-jobs')} />
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 16, marginBottom: 16 }}>
         <div className="card" style={{ padding: 0 }}>
           <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--border)' }}>
             <div style={{ fontSize: 13, fontWeight: 600 }}>Rules by type</div>
-            <div className="small muted">For currently selected client</div>
+            <div className="small muted">For the selected client</div>
           </div>
           <div style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
             {byType.length === 0 ? <span className="muted small">No rule types yet</span> :
@@ -105,14 +122,14 @@ export function Overview() {
           </div>
           <div style={{ padding: '8px 0' }}>
             {activity.length === 0 ? <div className="empty">Nothing recent</div> :
-              activity.map((a, i) => (
-                <div key={i} style={{ padding: '10px 16px', display: 'flex',
-                                      gap: 10, alignItems: 'center',
-                                      borderBottom: '1px solid var(--border)' }}>
-                  <Icon name={a.kind === 'rule' ? 'edit' : 'deploy'} size={14} />
+              activity.map((item, index) => (
+                <div key={index} style={{ padding: '10px 16px', display: 'flex',
+                                          gap: 10, alignItems: 'center',
+                                          borderBottom: '1px solid var(--border)' }}>
+                  <Icon name={item.kind === 'rule' ? 'edit' : 'deploy'} size={14} />
                   <div className="grow" style={{ minWidth: 0 }}>
-                    <div style={{ fontSize: 13 }}>{a.what}</div>
-                    <div className="small muted">{new Date(a.at).toLocaleString()}</div>
+                    <div style={{ fontSize: 13 }}>{item.what}</div>
+                    <div className="small muted">{new Date(item.at).toLocaleString()}</div>
                   </div>
                 </div>
               ))}
@@ -132,14 +149,14 @@ export function Overview() {
           </button>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))' }}>
-          {clients.map(c => (
-            <div key={c.id} style={{ padding: '14px 16px',
-                                     borderRight: '1px solid var(--border)',
-                                     borderBottom: '1px solid var(--border)',
-                                     cursor: 'pointer' }}
-                 onClick={() => navigate(`/clients/${c.id}/deployments`)}>
-              <span className="cell-id">{c.code}</span>
-              <div style={{ fontWeight: 500, marginTop: 4 }}>{c.name}</div>
+          {clients.map(client => (
+            <div key={client.id} style={{ padding: '14px 16px',
+                                          borderRight: '1px solid var(--border)',
+                                          borderBottom: '1px solid var(--border)',
+                                          cursor: 'pointer' }}
+                 onClick={() => navigate(`/clients/${client.id}/deployments`)}>
+              <span className="cell-id">{client.code}</span>
+              <div style={{ fontWeight: 500, marginTop: 4 }}>{client.name}</div>
             </div>
           ))}
         </div>

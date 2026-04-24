@@ -273,6 +273,23 @@ class AdminResetPasswordRequest(BaseModel):
     new_password: str
 
 
+class UserRoleUpdate(BaseModel):
+    role: str
+
+
+class AccessRequestOut(BaseModel):
+    id: UUID
+    user_id: UUID
+    username: str
+    client_id: UUID
+    client_name: str
+    client_code: str
+    status: str
+    requested_at: datetime
+    reviewed_at: Optional[datetime] = None
+    reviewed_by_username: Optional[str] = None
+
+
 # ── Knowledge Base ────────────────────────────────────────────────────────────
 
 class KnowledgeDocumentOut(BaseModel):

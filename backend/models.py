@@ -175,6 +175,25 @@ class UserClientAccess(Base):
     __table_args__ = (UniqueConstraint("user_id", "client_id", name="uq_user_client"),)
 
 
+AccessRequestStatus = SAEnum("pending", "approved", "denied", name="access_request_status")
+
+
+class ClientAccessRequest(Base):
+    __tablename__ = "client_access_requests"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    client_id = Column(UUID(as_uuid=True), ForeignKey("clients.id", ondelete="CASCADE"), nullable=False)
+    status = Column(AccessRequestStatus, nullable=False, default="pending")
+    requested_at = Column(TIMESTAMP(timezone=True), default=utcnow, nullable=False)
+    reviewed_at = Column(TIMESTAMP(timezone=True), nullable=True)
+    reviewed_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+
+    user = relationship("User", foreign_keys=[user_id])
+    client = relationship("Client")
+    reviewed_by = relationship("User", foreign_keys=[reviewed_by_id])
+
+
 KbCategory = SAEnum("integrations", "automations", "issues", name="kb_category")
 
 

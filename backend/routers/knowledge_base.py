@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from database import get_db
-from models import KnowledgeDocument, Client, User, UserClientAccess
+from models import KnowledgeDocument, Client, User
 from schemas import KnowledgeDocumentOut
 from auth_deps import get_current_user, check_client_access
 from storage import knowledge_dir, unique_filename
@@ -30,12 +30,6 @@ async def list_knowledge_docs(
         stmt = stmt.where(KnowledgeDocument.client_id == client_id)
     if category:
         stmt = stmt.where(KnowledgeDocument.category == category)
-    if current_user.role != "admin":
-        access_result = await db.execute(
-            select(UserClientAccess.client_id).where(UserClientAccess.user_id == current_user.id)
-        )
-        allowed = {row[0] for row in access_result}
-        stmt = stmt.where(KnowledgeDocument.client_id.in_(allowed))
     result = await db.execute(stmt)
     return result.scalars().all()
 
@@ -98,16 +92,6 @@ async def download_knowledge_doc(
     doc = result.scalar_one_or_none()
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
-
-    if current_user.role != "admin":
-        access_result = await db.execute(
-            select(UserClientAccess).where(
-                UserClientAccess.user_id == current_user.id,
-                UserClientAccess.client_id == doc.client_id,
-            )
-        )
-        if not access_result.scalar_one_or_none():
-            raise HTTPException(status_code=403, detail="Access denied")
 
     if not Path(doc.file_path).exists():
         raise HTTPException(status_code=404, detail="File not found on disk")

@@ -7,7 +7,7 @@ vi.mock('../../context/ClientContext', () => ({
   useClients: () => ({ selectedClientId: 'c1', clients: [] }),
 }))
 vi.mock('../../components/Toast', () => ({ useToast: () => ({ toast: vi.fn() }) }))
-const rt = { id: 'rt1', slug: 'noise-suppression', name: 'Noise Suppression',
+const rt = { id: 'rt1', slug: 'noise_suppression', name: 'Noise Suppression',
              pipeline_stage: 1, drl_package: 'com.x', functions: [], imports: [] }
 vi.mock('../../api/client', () => ({
   getRuleTypes: vi.fn(async () => [rt]),
@@ -16,7 +16,7 @@ vi.mock('../../api/client', () => ({
   updateRule: vi.fn(async () => ({})),
 }))
 
-function renderEditor(path = '/rules/noise-suppression/new') {
+function renderEditor(path = '/rules/noise_suppression/new') {
   const router = createMemoryRouter(
     [{ path: '/rules/:slug/new', element: <RuleEditorPage /> }],
     { initialEntries: [path] },

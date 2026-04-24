@@ -70,6 +70,7 @@ export function KnowledgeBase() {
   const handleUpload = async () => {
     if (!form.client_id) { setFormError('Select a client'); return }
     if (!form.name.trim()) { setFormError('Name is required'); return }
+    if (!form.description.trim()) { setFormError('Description is required'); return }
     if (!file) { setFormError('Select a file'); return }
     setSaving(true)
     setFormError('')
@@ -78,7 +79,7 @@ export function KnowledgeBase() {
         client_id: form.client_id,
         category,
         name: form.name.trim(),
-        description: form.description.trim() || undefined,
+        description: form.description.trim(),
         file,
       })
       setDocs(prev => [doc, ...prev])
@@ -158,6 +159,7 @@ export function KnowledgeBase() {
           <thead>
             <tr>
               <th>Name</th>
+              <th>Client</th>
               <th>Filename</th>
               <th>Size</th>
               <th className="col-updated">Uploaded</th>
@@ -165,17 +167,20 @@ export function KnowledgeBase() {
             </tr>
           </thead>
           <tbody>
-            {loading ? <SkeletonRows count={4} cols={5} /> :
+            {loading ? <SkeletonRows count={4} cols={6} /> :
               filtered.length === 0 ? (
-                <tr><td colSpan={5}>
+                <tr><td colSpan={6}>
                   <EmptyState icon="folder" title="No documents yet" body="Upload a document to get started." />
                 </td></tr>
-              ) : filtered.map(doc => (
+              ) : filtered.map(doc => {
+                const client = clients.find(c => c.id === doc.client_id)
+                return (
                 <tr key={doc.id}>
                   <td>
                     <span className="cell-name">{doc.name}</span>
-                    {doc.description && <div className="small muted">{doc.description}</div>}
+                    <div className="small muted">{doc.description}</div>
                   </td>
+                  <td className="small">{client ? <><strong>{client.code}</strong> <span className="muted">— {client.name}</span></> : doc.client_id}</td>
                   <td className="small">{doc.filename}</td>
                   <td className="small muted">{formatBytes(doc.file_size)}</td>
                   <td><span className="muted small">{new Date(doc.created_at).toLocaleString()}</span></td>
@@ -204,7 +209,7 @@ export function KnowledgeBase() {
                     </div>
                   </td>
                 </tr>
-              ))}
+              )})}
           </tbody>
         </table>
       </div>
@@ -240,7 +245,7 @@ export function KnowledgeBase() {
               <label>Description</label>
               <input
                 type="text"
-                placeholder="Optional description"
+                placeholder="What does this document cover?"
                 value={form.description}
                 onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
               />

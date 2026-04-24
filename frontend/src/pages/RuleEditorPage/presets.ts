@@ -1,7 +1,20 @@
 export interface ActionPreset { key: string; label: string; template: string }
 
+const SLUG_ALIASES: Record<string, string> = {
+  'noise-suppression': 'noise_suppression',
+  'alert-classification': 'alert_classifier',
+  'alert-correlation': 'issue_correlation',
+  'incident-creation': 'incident_rules',
+  'issue-recommendation': 'recommendation',
+  'email-ingestion': 'email_ingestion',
+}
+
+export function normalizeRuleTypeSlug(slug: string): string {
+  return SLUG_ALIASES[slug] ?? slug
+}
+
 const PRESETS: Record<string, ActionPreset[]> = {
-  'noise-suppression': [
+  noise_suppression: [
     { key: 'nsSuppress', label: 'Suppress alert',      template: 'request.getGroupedAlert().setIsAlertFiltered("TRUE");' },
     { key: 'nsPassThru', label: 'Pass through',        template: 'request.getGroupedAlert().setIsAlertFiltered("FALSE");' },
     { key: 'nsClose',    label: 'Close alert',         template: 'request.getGroupedAlert().setState("Closed");' },
@@ -15,21 +28,22 @@ const DEFAULT: ActionPreset[] = [
 ]
 
 export function getActionPresets(slug: string): ActionPreset[] {
-  return PRESETS[slug] ?? DEFAULT
+  return PRESETS[normalizeRuleTypeSlug(slug)] ?? DEFAULT
 }
 
-export const FIELD_SUGGESTIONS: Record<string, string[]> = {
-  'noise-suppression':         ['sourceId','alertName','severity','alertAge','description','resourceId','hostname','ciName','state','environmentName','applicationName','sourceType','categoryName'],
-  'alert-classification':      ['alertName','severity','sourceId','description','resourceId'],
-  'alert-service-classifier':  ['sourceId','alertName','severity','resourceId','status','description','hostname'],
-  'alert-enrichment':          ['alertName','sourceId','severity','description'],
-  'alert-correlation':         ['alertName','severity','resourceId','tags','duration','description'],
-  'incident-creation':         ['severity','name','source','description','status','type','category','environment'],
-  'incident-routing':          ['description','title','assignmentGroup','priority','status','source'],
-  'incident-user-routing':     ['shortDescription','description','priority'],
-  'issue-recommendation':      ['description','name','severity','source','status','category'],
+const FIELD_SUGGESTIONS_BY_SLUG: Record<string, string[]> = {
+  noise_suppression: ['sourceId','alertName','severity','alertAge','description','resourceId','hostname','ciName','state','environmentName','applicationName','sourceType','categoryName'],
+  alert_classifier: ['alertName','severity','sourceId','description','resourceId'],
+  issue_correlation: ['alertName','severity','resourceId','tags','duration','description'],
+  incident_rules: ['severity','name','source','description','status','type','category','environment'],
+  recommendation: ['description','name','severity','source','status','category'],
+  email_ingestion: ['alertName','severity','sourceId','description','resourceId'],
+}
+
+export function getFieldSuggestions(slug: string): string[] {
+  return FIELD_SUGGESTIONS_BY_SLUG[normalizeRuleTypeSlug(slug)] ?? []
 }
 
 export function getPrefix(slug: string): string {
-  return slug === 'noise-suppression' ? 'groupedAlert' : ''
+  return normalizeRuleTypeSlug(slug) === 'noise_suppression' ? 'groupedAlert' : ''
 }

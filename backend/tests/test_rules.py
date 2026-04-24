@@ -77,6 +77,24 @@ async def test_filter_rules_by_tool(authed_client):
 
 
 @pytest.mark.asyncio
+async def test_filter_rules_by_rule_type_slug_and_id(authed_client):
+    client_id = await _make_client(authed_client)
+    alert_rt_id = await _get_rule_type_id(authed_client, "alert_classifier")
+    noise_rt_id = await _get_rule_type_id(authed_client, "noise_suppression")
+
+    await authed_client.post("/api/rules", json={"client_id": client_id, "rule_type_id": alert_rt_id, "name": "AlertOnly"})
+    await authed_client.post("/api/rules", json={"client_id": client_id, "rule_type_id": noise_rt_id, "name": "NoiseOnly"})
+
+    by_slug = await authed_client.get(f"/api/rules?client_id={client_id}&rule_type=alert_classifier")
+    assert by_slug.status_code == 200
+    assert [r["name"] for r in by_slug.json()] == ["AlertOnly"]
+
+    by_id = await authed_client.get(f"/api/rules?client_id={client_id}&rule_type={noise_rt_id}")
+    assert by_id.status_code == 200
+    assert [r["name"] for r in by_id.json()] == ["NoiseOnly"]
+
+
+@pytest.mark.asyncio
 async def test_search_rules_by_name(authed_client):
     c1 = await _make_client(authed_client)
     rt_id = await _get_rule_type_id(authed_client)
@@ -129,3 +147,68 @@ async def test_copy_rule_to_another_client(authed_client):
     assert copy["client_id"] == c2
     assert "OriginalRule" in copy["name"]
     assert copy["id"] != original["id"]
+
+
+@pytest.mark.asyncio
+async def test_contributor_can_see_all_rules_from_all_clients(client, authed_client):
+    """Contributors can read rules from all clients, not just their own."""
+    admin_client_id = await _make_client(authed_client, "ADM")
+    rt_id = await _get_rule_type_id(authed_client)
+    await authed_client.post("/api/rules", json={"client_id": admin_client_id, "rule_type_id": rt_id, "name": "AdminRule"})
+
+    reg = await client.post("/api/auth/register", json={"username": "rules_contrib_read", "password": "password123"})
+    contrib_token = reg.json()["token"]
+    own_client = await client.post(
+        "/api/clients",
+        json={"code": "OWNRULE", "name": "Own Rule Client"},
+        headers={"Authorization": f"Bearer {contrib_token}"},
+    )
+    own_client_id = own_client.json()["id"]
+    await client.post(
+        "/api/rules",
+        json={"client_id": own_client_id, "rule_type_id": rt_id, "name": "OwnRule"},
+        headers={"Authorization": f"Bearer {contrib_token}"},
+    )
+
+    # Contributor sees ALL rules, including admin's
+    listed = await client.get(
+        "/api/rules",
+        headers={"Authorization": f"Bearer {contrib_token}"},
+    )
+    assert listed.status_code == 200
+    names = {r["name"] for r in listed.json()}
+    assert "AdminRule" in names
+    assert "OwnRule" in names
+
+    # Contributor can filter by any client (including one they can't edit)
+    filtered = await client.get(
+        f"/api/rules?client_id={admin_client_id}",
+        headers={"Authorization": f"Bearer {contrib_token}"},
+    )
+    assert filtered.status_code == 200
+    assert filtered.json()[0]["name"] == "AdminRule"
+
+
+@pytest.mark.asyncio
+async def test_contributor_cannot_create_rule_for_inaccessible_client(client, authed_client):
+    """Contributors get 403 when trying to write rules for a client they don't have access to."""
+    admin_client_id = await _make_client(authed_client, "ADM2")
+    rt_id = await _get_rule_type_id(authed_client)
+
+    reg = await client.post("/api/auth/register", json={"username": "rules_contrib_write", "password": "password123"})
+    contrib_token = reg.json()["token"]
+
+    # Create is blocked
+    create_resp = await client.post(
+        "/api/rules",
+        json={"client_id": admin_client_id, "rule_type_id": rt_id, "name": "HackRule"},
+        headers={"Authorization": f"Bearer {contrib_token}"},
+    )
+    assert create_resp.status_code == 403
+
+    # But reading is allowed
+    read_resp = await client.get(
+        f"/api/rules?client_id={admin_client_id}",
+        headers={"Authorization": f"Bearer {contrib_token}"},
+    )
+    assert read_resp.status_code == 200

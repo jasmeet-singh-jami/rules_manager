@@ -30,7 +30,7 @@ export function LoginPage() {
     <div className="auth-split">
       <div className="auth-form-col">
         <form className="card" style={{ width: 360 }} onSubmit={handleSubmit}>
-          <div className="brand-mark" style={{ marginBottom: 16 }}>P</div>
+          <img src="/icon.png" alt="Polycloud" style={{ width: 48, height: 48, marginBottom: 16, borderRadius: 10 }} />
           <h1 style={{ fontSize: 22, fontWeight: 600, margin: '0 0 4px' }}>Welcome back</h1>
           <div className="small muted" style={{ marginBottom: 20 }}>Sign in to Rules Manager</div>
           <div className="field">

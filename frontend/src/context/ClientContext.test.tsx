@@ -16,6 +16,7 @@ function Probe() {
       <span data-testid="selected">{ctx.selectedClientId ?? 'none'}</span>
       <span data-testid="count">{ctx.clients.length}</span>
       <button onClick={() => ctx.setSelectedClientId('2')}>pick</button>
+      <button onClick={() => ctx.addClient({ id: '3', code: 'NEW', name: 'New Client', description: null, created_at: '' })}>add</button>
     </div>
   )
 }
@@ -40,5 +41,19 @@ describe('ClientContext', () => {
     localStorage.setItem('polycloud.selectedClientId', '2')
     render(<ClientProvider><Probe /></ClientProvider>)
     await waitFor(() => expect(screen.getByTestId('selected').textContent).toBe('2'))
+  })
+
+  it('falls back to the first accessible client when saved selection is missing', async () => {
+    localStorage.setItem('polycloud.selectedClientId', '999')
+    render(<ClientProvider><Probe /></ClientProvider>)
+    await waitFor(() => expect(screen.getByTestId('selected').textContent).toBe('1'))
+  })
+
+  it('adds a new client and selects it immediately', async () => {
+    render(<ClientProvider><Probe /></ClientProvider>)
+    await waitFor(() => expect(screen.getByTestId('count').textContent).toBe('2'))
+    act(() => { screen.getByText('add').click() })
+    expect(screen.getByTestId('count').textContent).toBe('3')
+    expect(screen.getByTestId('selected').textContent).toBe('3')
   })
 })

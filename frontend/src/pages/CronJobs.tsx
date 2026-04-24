@@ -26,8 +26,7 @@ export function CronJobs() {
   const [q, setQ] = useState('')
   const [clientFilter, setClientFilter] = useState('')
   const [showModal, setShowModal] = useState(false)
-  const [form, setForm] = useState({ client_id: '', name: '', description: '' })
-  const [file, setFile] = useState<File | null>(null)
+  const [form, setForm] = useState({ client_id: '', name: '', description: '', script: '' })
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState('')
   const [downloading, setDownloading] = useState<string | null>(null)
@@ -53,8 +52,7 @@ export function CronJobs() {
   const editableClients = clients.filter(c => hasEditAccess(c.id))
 
   const openModal = () => {
-    setForm({ client_id: editableClients[0]?.id ?? '', name: '', description: '' })
-    setFile(null)
+    setForm({ client_id: editableClients[0]?.id ?? '', name: '', description: '', script: '' })
     setFormError('')
     setShowModal(true)
   }
@@ -62,21 +60,22 @@ export function CronJobs() {
   const handleUpload = async () => {
     if (!form.client_id) { setFormError('Select a client'); return }
     if (!form.name.trim()) { setFormError('Name is required'); return }
-    if (!file) { setFormError('Select a file'); return }
+    if (!form.description.trim()) { setFormError('Description is required'); return }
+    if (!form.script.trim()) { setFormError('Script is required'); return }
     setSaving(true)
     setFormError('')
     try {
       const job = await uploadCronJob({
         client_id: form.client_id,
         name: form.name.trim(),
-        description: form.description.trim() || undefined,
-        file,
+        description: form.description.trim(),
+        script: form.script,
       })
       setJobs(prev => [job, ...prev])
-      toast('Cron job uploaded', 'ok')
+      toast('Cron job saved', 'ok')
       setShowModal(false)
     } catch {
-      setFormError('Upload failed')
+      setFormError('Save failed')
     } finally {
       setSaving(false)
     }
@@ -125,7 +124,7 @@ export function CronJobs() {
         {editableClients.length > 0 && (
           <div className="page-actions">
             <button className="btn accent" onClick={openModal}>
-              <Icon name="upload" /> Upload Cron Job
+              <Icon name="plus" /> Add Cron Job
             </button>
           </div>
         )}
@@ -149,6 +148,7 @@ export function CronJobs() {
           <thead>
             <tr>
               <th>Name</th>
+              <th>Client</th>
               <th>Filename</th>
               <th>Size</th>
               <th className="col-updated">Uploaded</th>
@@ -156,17 +156,20 @@ export function CronJobs() {
             </tr>
           </thead>
           <tbody>
-            {loading ? <SkeletonRows count={4} cols={5} /> :
+            {loading ? <SkeletonRows count={4} cols={6} /> :
               filtered.length === 0 ? (
-                <tr><td colSpan={5}>
+                <tr><td colSpan={6}>
                   <EmptyState icon="clock" title="No cron jobs yet" body="Upload a cron job script to get started." />
                 </td></tr>
-              ) : filtered.map(job => (
+              ) : filtered.map(job => {
+                const client = clients.find(c => c.id === job.client_id)
+                return (
                 <tr key={job.id}>
                   <td>
                     <span className="cell-name">{job.name}</span>
-                    {job.description && <div className="small muted">{job.description}</div>}
+                    <div className="small muted">{job.description}</div>
                   </td>
+                  <td className="small">{client ? <><strong>{client.code}</strong> <span className="muted">— {client.name}</span></> : job.client_id}</td>
                   <td className="small">{job.filename}</td>
                   <td className="small muted">{formatBytes(job.file_size)}</td>
                   <td><span className="muted small">{new Date(job.created_at).toLocaleString()}</span></td>
@@ -195,7 +198,7 @@ export function CronJobs() {
                     </div>
                   </td>
                 </tr>
-              ))}
+              )})}
           </tbody>
         </table>
       </div>
@@ -203,7 +206,7 @@ export function CronJobs() {
       {showModal && (
         <div className="modal-backdrop" onClick={() => setShowModal(false)}>
           <div className="modal" onClick={e => e.stopPropagation()}>
-            <h2>Upload Cron Job</h2>
+            <h2>Add Cron Job</h2>
             {formError && <div className="callout danger small" style={{ marginBottom: 14 }}>{formError}</div>}
             <div className="field" style={{ marginBottom: 12 }}>
               <label>Client</label>
@@ -231,19 +234,25 @@ export function CronJobs() {
               <label>Description</label>
               <input
                 type="text"
-                placeholder="Optional description"
+                placeholder="What does this script do?"
                 value={form.description}
                 onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
               />
             </div>
             <div className="field" style={{ marginBottom: 20 }}>
-              <label>File</label>
-              <input type="file" onChange={e => setFile(e.target.files?.[0] ?? null)} />
+              <label>Script</label>
+              <textarea
+                rows={10}
+                placeholder="Paste your cron job script here…"
+                value={form.script}
+                onChange={e => setForm(f => ({ ...f, script: e.target.value }))}
+                style={{ fontFamily: 'monospace', fontSize: 13, resize: 'vertical' }}
+              />
             </div>
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
               <button className="btn ghost" onClick={() => setShowModal(false)}>Cancel</button>
               <button className="btn accent" onClick={handleUpload} disabled={saving}>
-                {saving ? 'Uploading…' : 'Upload'}
+                {saving ? 'Saving…' : 'Save'}
               </button>
             </div>
           </div>

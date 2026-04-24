@@ -1,14 +1,15 @@
+import re
 import aiofiles
 from uuid import UUID
 from typing import Optional
 from pathlib import Path
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, status
+from fastapi import APIRouter, Depends, HTTPException, Form, status
 from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from database import get_db
-from models import CronJob, Client, User, UserClientAccess
+from models import CronJob, Client, User
 from schemas import CronJobOut
 from auth_deps import get_current_user, check_client_access
 from storage import cron_jobs_dir, unique_filename
@@ -25,12 +26,6 @@ async def list_cron_jobs(
     stmt = select(CronJob).order_by(CronJob.created_at.desc())
     if client_id:
         stmt = stmt.where(CronJob.client_id == client_id)
-    if current_user.role != "admin":
-        access_result = await db.execute(
-            select(UserClientAccess.client_id).where(UserClientAccess.user_id == current_user.id)
-        )
-        allowed = {row[0] for row in access_result}
-        stmt = stmt.where(CronJob.client_id.in_(allowed))
     result = await db.execute(stmt)
     return result.scalars().all()
 
@@ -39,8 +34,8 @@ async def list_cron_jobs(
 async def upload_cron_job(
     client_id: UUID = Form(...),
     name: str = Form(...),
-    description: Optional[str] = Form(None),
-    file: UploadFile = File(...),
+    description: str = Form(...),
+    script: str = Form(...),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -50,11 +45,14 @@ async def upload_cron_job(
 
     await check_client_access(current_user, client_id, db)
 
+    slug = re.sub(r'[^\w\-]', '_', name.strip().lower().replace(' ', '_'))
+    filename = f"{slug}.sh"
+
     dest_dir = cron_jobs_dir(str(client_id))
-    dest_name = unique_filename(file.filename or "upload")
+    dest_name = unique_filename(filename)
     dest_path = dest_dir / dest_name
 
-    content = await file.read()
+    content = script.encode("utf-8")
     async with aiofiles.open(dest_path, "wb") as f:
         await f.write(content)
 
@@ -62,10 +60,10 @@ async def upload_cron_job(
         client_id=client_id,
         name=name,
         description=description,
-        filename=file.filename or "upload",
+        filename=filename,
         file_path=str(dest_path),
         file_size=len(content),
-        mime_type=file.content_type or "application/octet-stream",
+        mime_type="text/plain",
         uploaded_by=current_user.id,
     )
     db.add(job)
@@ -88,16 +86,6 @@ async def download_cron_job(
     job = result.scalar_one_or_none()
     if not job:
         raise HTTPException(status_code=404, detail="Cron job not found")
-
-    if current_user.role != "admin":
-        access_result = await db.execute(
-            select(UserClientAccess).where(
-                UserClientAccess.user_id == current_user.id,
-                UserClientAccess.client_id == job.client_id,
-            )
-        )
-        if not access_result.scalar_one_or_none():
-            raise HTTPException(status_code=403, detail="Access denied")
 
     if not Path(job.file_path).exists():
         raise HTTPException(status_code=404, detail="File not found on disk")

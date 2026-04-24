@@ -76,7 +76,7 @@ export function Sidebar() {
   return (
     <aside className="sidebar">
       <div className="sidebar-brand">
-        <div className="brand-mark">P</div>
+        <img src="/icon.png" alt="Polycloud" style={{ width: 28, height: 28, borderRadius: 6, flexShrink: 0 }} />
         <div>
           <div className="brand-name">Polycloud</div>
           <div className="brand-sub">Rules Manager</div>

@@ -2,7 +2,7 @@ from uuid import UUID
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_
+from sqlalchemy import select, and_, or_, String
 
 from database import get_db
 from models import Rule, Client, RuleType, User, DrlFunction, DrlImport
@@ -19,7 +19,7 @@ async def list_rules(
     rule_type: Optional[str] = Query(None),
     tool: Optional[str] = Query(None),
     search: Optional[str] = Query(None),
-    _: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     stmt = select(Rule)
@@ -27,7 +27,11 @@ async def list_rules(
     if client_id:
         conditions.append(Rule.client_id == client_id)
     if rule_type:
-        rt_result = await db.execute(select(RuleType).where(RuleType.slug == rule_type))
+        rt_result = await db.execute(
+            select(RuleType).where(
+                or_(RuleType.slug == rule_type, RuleType.id.cast(String) == rule_type)
+            )
+        )
         rt = rt_result.scalar_one_or_none()
         if rt:
             conditions.append(Rule.rule_type_id == rt.id)

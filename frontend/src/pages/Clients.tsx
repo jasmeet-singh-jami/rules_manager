@@ -1,7 +1,11 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Client, getClients, createClient, updateClient, deleteClient } from '../api/client'
+import {
+  Client, getClients, createClient, updateClient, deleteClient,
+  AccessRequest, getMyAccessRequests, requestClientAccess,
+} from '../api/client'
 import { useAuth } from '../context/AuthContext'
+import { useClients } from '../context/ClientContext'
 import { EmptyState } from '../components/EmptyState'
 
 interface FormState { code: string; name: string; description: string }
@@ -9,19 +13,25 @@ const empty: FormState = { code: '', name: '', description: '' }
 
 export function Clients() {
   const { hasEditAccess, addClientAccess, isAdmin } = useAuth()
+  const { addClient: addClientToContext } = useClients()
   const [clients, setClients] = useState<Client[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [modal, setModal] = useState<'new' | Client | null>(null)
   const [form, setForm] = useState<FormState>(empty)
   const [saving, setSaving] = useState(false)
+  const [myRequests, setMyRequests] = useState<AccessRequest[]>([])
+  const [requestingId, setRequestingId] = useState<string | null>(null)
 
   useEffect(() => {
     getClients()
       .then(setClients)
       .catch(() => setError('Failed to load clients'))
       .finally(() => setLoading(false))
-  }, [])
+    if (!isAdmin) {
+      getMyAccessRequests().then(setMyRequests).catch(() => {})
+    }
+  }, [isAdmin])
 
   function openNew() { setForm(empty); setModal('new') }
   function openEdit(c: Client) {
@@ -31,6 +41,8 @@ export function Clients() {
   function closeModal() { setModal(null); setError('') }
 
   async function handleSave() {
+    if (!form.code.trim()) { setError('Client code is required'); return }
+    if (!form.name.trim()) { setError('Client name is required'); return }
     setSaving(true)
     setError('')
     try {
@@ -38,6 +50,7 @@ export function Clients() {
         const c = await createClient(form)
         setClients(prev => [...prev, c])
         if (!isAdmin) addClientAccess(c.id)
+        addClientToContext(c)
       } else if (modal) {
         const c = await updateClient((modal as Client).id, { name: form.name, description: form.description })
         setClients(prev => prev.map(x => x.id === c.id ? c : x))
@@ -54,6 +67,24 @@ export function Clients() {
     if (!confirm(`Delete client "${c.name}"? This removes all their rules.`)) return
     await deleteClient(c.id)
     setClients(prev => prev.filter(x => x.id !== c.id))
+  }
+
+  async function handleRequestAccess(c: Client) {
+    setRequestingId(c.id)
+    try {
+      const req = await requestClientAccess(c.id)
+      setMyRequests(prev => [...prev.filter(r => r.client_id !== c.id), req])
+    } catch {
+      // If duplicate pending already exists, refetch to sync state
+      getMyAccessRequests().then(setMyRequests).catch(() => {})
+    } finally {
+      setRequestingId(null)
+    }
+  }
+
+  function requestStatusForClient(clientId: string): AccessRequest['status'] | null {
+    const req = myRequests.find(r => r.client_id === clientId)
+    return req?.status ?? null
   }
 
   return (
@@ -94,6 +125,24 @@ export function Clients() {
                     {hasEditAccess(c.id) && (
                       <button className="btn sm danger-ghost" onClick={() => handleDelete(c)}>Delete</button>
                     )}
+                    {!isAdmin && !hasEditAccess(c.id) && (() => {
+                      const reqStatus = requestStatusForClient(c.id)
+                      if (reqStatus === 'pending') {
+                        return <span className="badge neutral" style={{ alignSelf: 'center' }}>Pending</span>
+                      }
+                      if (reqStatus === 'denied') {
+                        return <span className="badge danger" style={{ alignSelf: 'center' }}>Denied</span>
+                      }
+                      return (
+                        <button
+                          className="btn sm ghost"
+                          disabled={requestingId === c.id}
+                          onClick={() => handleRequestAccess(c)}
+                        >
+                          {requestingId === c.id ? 'Requesting…' : 'Request Access'}
+                        </button>
+                      )
+                    })()}
                   </span>
                 </td>
               </tr>

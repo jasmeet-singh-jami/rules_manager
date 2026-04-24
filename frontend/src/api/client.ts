@@ -294,14 +294,14 @@ export const uploadKnowledgeDoc = async (params: {
   client_id: string
   category: string
   name: string
-  description?: string
+  description: string
   file: File
 }): Promise<KnowledgeDocument> => {
   const form = new FormData()
   form.append('client_id', params.client_id)
   form.append('category', params.category)
   form.append('name', params.name)
-  if (params.description !== undefined) form.append('description', params.description)
+  form.append('description', params.description)
   form.append('file', params.file)
   const token = localStorage.getItem('auth_token')
   const headers: Record<string, string> = {}
@@ -341,14 +341,14 @@ export const getCronJobs = (client_id?: string) => {
 export const uploadCronJob = async (params: {
   client_id: string
   name: string
-  description?: string
-  file: File
+  description: string
+  script: string
 }): Promise<CronJob> => {
   const form = new FormData()
   form.append('client_id', params.client_id)
   form.append('name', params.name)
-  if (params.description !== undefined) form.append('description', params.description)
-  form.append('file', params.file)
+  form.append('description', params.description)
+  form.append('script', params.script)
   const token = localStorage.getItem('auth_token')
   const headers: Record<string, string> = {}
   if (token) headers['Authorization'] = `Bearer ${token}`
@@ -374,3 +374,36 @@ export const downloadCronJob = (id: string): Promise<Response> => {
 
 export const deleteCronJob = (id: string) =>
   request<void>(`/cron-jobs/${id}`, { method: 'DELETE' })
+
+// ── Access Requests ───────────────────────────────────────────────────────────
+
+export interface AccessRequest {
+  id: string
+  user_id: string
+  username: string
+  client_id: string
+  client_name: string
+  client_code: string
+  status: 'pending' | 'approved' | 'denied'
+  requested_at: string
+  reviewed_at: string | null
+  reviewed_by_username: string | null
+}
+
+export const requestClientAccess = (clientId: string) =>
+  request<AccessRequest>(`/clients/${clientId}/request-access`, { method: 'POST' })
+
+export const getMyAccessRequests = () =>
+  request<AccessRequest[]>('/access-requests/me')
+
+export const getAdminAccessRequests = (reqStatus = 'pending') =>
+  request<AccessRequest[]>(`/admin/access-requests?status=${reqStatus}`)
+
+export const approveAccessRequest = (requestId: string) =>
+  request<void>(`/admin/access-requests/${requestId}/approve`, { method: 'POST' })
+
+export const denyAccessRequest = (requestId: string) =>
+  request<void>(`/admin/access-requests/${requestId}/deny`, { method: 'POST' })
+
+export const setUserRole = (userId: string, role: 'admin' | 'contributor') =>
+  request<void>(`/admin/users/${userId}/role`, { method: 'PATCH', body: JSON.stringify({ role }) })
