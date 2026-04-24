@@ -2,7 +2,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Optional
 from uuid import UUID
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator
 
 
 # ── Clients ──────────────────────────────────────────────────────────────────
@@ -11,6 +11,13 @@ class ClientCreate(BaseModel):
     code: str
     name: str
     description: Optional[str] = None
+
+    @field_validator('code', 'name')
+    @classmethod
+    def not_empty(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError('must not be empty')
+        return v
 
 
 class ClientUpdate(BaseModel):
@@ -97,6 +104,13 @@ class RuleCreate(BaseModel):
     action_meta: Optional[Any] = None
     enabled: bool = True
     window: Optional[int] = None
+
+    @field_validator('name')
+    @classmethod
+    def name_not_empty(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError('name must not be empty')
+        return v
 
 
 class RuleUpdate(BaseModel):
@@ -257,3 +271,36 @@ class ChangePasswordRequest(BaseModel):
 
 class AdminResetPasswordRequest(BaseModel):
     new_password: str
+
+
+# ── Knowledge Base ────────────────────────────────────────────────────────────
+
+class KnowledgeDocumentOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    client_id: UUID
+    category: str
+    name: str
+    description: Optional[str]
+    filename: str
+    file_size: int
+    mime_type: str
+    uploaded_by: Optional[UUID]
+    created_at: datetime
+
+
+# ── Cron Jobs ─────────────────────────────────────────────────────────────────
+
+class CronJobOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    client_id: UUID
+    name: str
+    description: Optional[str]
+    filename: str
+    file_size: int
+    mime_type: str
+    uploaded_by: Optional[UUID]
+    created_at: datetime
