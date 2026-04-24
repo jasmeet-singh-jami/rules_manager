@@ -128,8 +128,8 @@ async def delete_knowledge_doc(
 
     await check_client_access(current_user, doc.client_id, db)
 
+    await db.delete(doc)
+    await db.commit()
     file_path = Path(doc.file_path)
     if file_path.exists():
         file_path.unlink()
-    await db.delete(doc)
-    await db.commit()
