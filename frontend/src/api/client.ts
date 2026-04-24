@@ -88,6 +88,11 @@ export interface CronJob {
   created_at: string
 }
 
+export interface KnowledgeDocFilters {
+  client_id?: string
+  category?: string
+}
+
 export interface ParsedRulePreview {
   name: string
   condition_raw: string
@@ -277,11 +282,6 @@ export const confirmImport = (payload: ImportConfirmPayload) =>
 
 // ── Knowledge Base ────────────────────────────────────────────────────────────
 
-export interface KnowledgeDocFilters {
-  client_id?: string
-  category?: string
-}
-
 export const getKnowledgeDocs = (filters: KnowledgeDocFilters = {}) => {
   const params = new URLSearchParams()
   if (filters.client_id) params.set('client_id', filters.client_id)
@@ -301,7 +301,7 @@ export const uploadKnowledgeDoc = async (params: {
   form.append('client_id', params.client_id)
   form.append('category', params.category)
   form.append('name', params.name)
-  if (params.description) form.append('description', params.description)
+  if (params.description !== undefined) form.append('description', params.description)
   form.append('file', params.file)
   const token = localStorage.getItem('auth_token')
   const headers: Record<string, string> = {}
@@ -318,6 +318,7 @@ export const uploadKnowledgeDoc = async (params: {
   return res.json() as Promise<KnowledgeDocument>
 }
 
+// TODO: redirect to /login on 401 (inherited gap from exportDeployment/exportRules)
 export const downloadKnowledgeDoc = (id: string): Promise<Response> => {
   const token = localStorage.getItem('auth_token')
   const headers: Record<string, string> = {}
@@ -331,8 +332,10 @@ export const deleteKnowledgeDoc = (id: string) =>
 // ── Cron Jobs ─────────────────────────────────────────────────────────────────
 
 export const getCronJobs = (client_id?: string) => {
-  const qs = client_id ? `?client_id=${client_id}` : ''
-  return request<CronJob[]>(`/cron-jobs${qs}`)
+  const params = new URLSearchParams()
+  if (client_id) params.set('client_id', client_id)
+  const qs = params.toString()
+  return request<CronJob[]>(`/cron-jobs${qs ? `?${qs}` : ''}`)
 }
 
 export const uploadCronJob = async (params: {
@@ -344,7 +347,7 @@ export const uploadCronJob = async (params: {
   const form = new FormData()
   form.append('client_id', params.client_id)
   form.append('name', params.name)
-  if (params.description) form.append('description', params.description)
+  if (params.description !== undefined) form.append('description', params.description)
   form.append('file', params.file)
   const token = localStorage.getItem('auth_token')
   const headers: Record<string, string> = {}
@@ -361,6 +364,7 @@ export const uploadCronJob = async (params: {
   return res.json() as Promise<CronJob>
 }
 
+// TODO: redirect to /login on 401 (inherited gap from exportDeployment/exportRules)
 export const downloadCronJob = (id: string): Promise<Response> => {
   const token = localStorage.getItem('auth_token')
   const headers: Record<string, string> = {}
