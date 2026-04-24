@@ -92,7 +92,9 @@ export function CronJobs() {
       const a = document.createElement('a')
       a.href = url
       a.download = job.filename
+      document.body.appendChild(a)
       a.click()
+      document.body.removeChild(a)
       URL.revokeObjectURL(url)
     } catch {
       toast('Download failed', 'danger')

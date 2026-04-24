@@ -101,7 +101,9 @@ export function KnowledgeBase() {
       const a = document.createElement('a')
       a.href = url
       a.download = doc.filename
+      document.body.appendChild(a)
       a.click()
+      document.body.removeChild(a)
       URL.revokeObjectURL(url)
     } catch {
       toast('Download failed', 'danger')

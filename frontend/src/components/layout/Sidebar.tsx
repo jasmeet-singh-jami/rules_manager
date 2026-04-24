@@ -28,6 +28,12 @@ const SETTINGS: NavEntry[] = [
   { to: '/account', icon: 'settings', label: 'Account' },
 ]
 
+const KB_CATEGORIES = [
+  { slug: 'integrations', label: 'Integrations' },
+  { slug: 'automations', label: 'Automations' },
+  { slug: 'issues', label: 'Issues' },
+]
+
 export function Sidebar() {
   const { user, isAdmin } = useAuth()
   const username = user?.username ?? ''
@@ -41,12 +47,6 @@ export function Sidebar() {
   const [rulesForClient, setRulesForClient] = useState<Rule[]>([])
   const onRulesPage = location.pathname.startsWith('/rules')
   const onKnowledgePage = location.pathname.startsWith('/knowledge')
-
-  const KB_CATEGORIES = [
-    { slug: 'integrations', label: 'Integrations' },
-    { slug: 'automations', label: 'Automations' },
-    { slug: 'issues', label: 'Issues' },
-  ]
 
   useEffect(() => { getRuleTypes().then(setRuleTypes).catch(() => {}) }, [])
   useEffect(() => {
@@ -110,18 +110,15 @@ export function Sidebar() {
         <div className="sidebar-section">
           <div className="sidebar-section-label">Categories</div>
           <div className="nav-sub">
-            {KB_CATEGORIES.map(cat => {
-              const isActive = location.pathname === `/knowledge/${cat.slug}`
-              return (
-                <NavLink
-                  key={cat.slug}
-                  to={`/knowledge/${cat.slug}`}
-                  className={() => `nav-item${isActive ? ' active' : ''}`}
-                >
-                  <span className="grow truncate">{cat.label}</span>
-                </NavLink>
-              )
-            })}
+            {KB_CATEGORIES.map(cat => (
+              <NavLink
+                key={cat.slug}
+                to={`/knowledge/${cat.slug}`}
+                className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
+              >
+                <span className="grow truncate">{cat.label}</span>
+              </NavLink>
+            ))}
           </div>
         </div>
       )}
