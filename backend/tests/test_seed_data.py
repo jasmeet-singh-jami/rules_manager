@@ -4,10 +4,10 @@ from models import RuleType
 
 
 @pytest.mark.asyncio
-async def test_seed_creates_five_rule_types(db):
+async def test_seed_creates_six_rule_types(db):
     result = await db.execute(select(RuleType))
     rule_types = result.scalars().all()
-    assert len(rule_types) == 5
+    assert len(rule_types) == 6
 
 
 @pytest.mark.asyncio
@@ -20,14 +20,15 @@ async def test_seed_rule_type_slugs(db):
         "issue_correlation",
         "incident_rules",
         "recommendation",
+        "email_ingestion",
     }
 
 
 @pytest.mark.asyncio
-async def test_seed_pipeline_stages_are_unique_1_to_5(db):
+async def test_seed_pipeline_stages_are_unique_1_to_6(db):
     result = await db.execute(select(RuleType.pipeline_stage))
     stages = sorted(row[0] for row in result.all())
-    assert stages == [1, 2, 3, 4, 5]
+    assert stages == [1, 2, 3, 4, 5, 6]
 
 
 @pytest.mark.asyncio
@@ -40,4 +41,4 @@ async def test_seed_is_idempotent(db, seeded_engine):
         await seed_rule_types(s)
         await s.commit()
     result = await db.execute(select(RuleType))
-    assert len(result.scalars().all()) == 5
+    assert len(result.scalars().all()) == 6

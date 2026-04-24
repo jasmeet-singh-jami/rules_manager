@@ -34,6 +34,12 @@ RULE_TYPES = [
         "pipeline_stage": 5,
         "drl_package": "com.infy.ceh.management.autonomics.framework.tasks.impl",
     },
+    {
+        "slug": "email_ingestion",
+        "name": "Email Ingestion",
+        "pipeline_stage": 6,
+        "drl_package": "com.infy.ceh.management.autonomics.tasks.impl",
+    },
 ]
 
 # (statement, kind, is_shared)
@@ -94,6 +100,11 @@ RULE_TYPE_IMPORTS = {
         ("import java.util.List;", "import", False),
         ("import java.util.regex.Matcher;", "import", False),
         ("import java.util.regex.Pattern;", "import", False),
+    ],
+    "email_ingestion": [
+        ("import com.infy.ceh.management.ems.dto.IPPAlert;", "import", False),
+        ("import java.lang.String;", "import", False),
+        ("import java.lang.Boolean;", "import", False),
     ],
 }
 
