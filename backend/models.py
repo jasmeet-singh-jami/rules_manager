@@ -173,3 +173,41 @@ class UserClientAccess(Base):
     client = relationship("Client")
 
     __table_args__ = (UniqueConstraint("user_id", "client_id", name="uq_user_client"),)
+
+
+KbCategory = SAEnum("integrations", "automations", "issues", name="kb_category")
+
+
+class KnowledgeDocument(Base):
+    __tablename__ = "knowledge_documents"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    client_id = Column(UUID(as_uuid=True), ForeignKey("clients.id", ondelete="CASCADE"), nullable=False)
+    category = Column(KbCategory, nullable=False)
+    name = Column(String(150), nullable=False)
+    description = Column(Text, nullable=True)
+    filename = Column(String(255), nullable=False)
+    file_path = Column(Text, nullable=False)
+    file_size = Column(Integer, nullable=False)
+    mime_type = Column(String(100), nullable=False)
+    uploaded_by = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    created_at = Column(TIMESTAMP(timezone=True), default=utcnow, nullable=False)
+
+    client = relationship("Client")
+
+
+class CronJob(Base):
+    __tablename__ = "cron_jobs"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    client_id = Column(UUID(as_uuid=True), ForeignKey("clients.id", ondelete="CASCADE"), nullable=False)
+    name = Column(String(150), nullable=False)
+    description = Column(Text, nullable=True)
+    filename = Column(String(255), nullable=False)
+    file_path = Column(Text, nullable=False)
+    file_size = Column(Integer, nullable=False)
+    mime_type = Column(String(100), nullable=False)
+    uploaded_by = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    created_at = Column(TIMESTAMP(timezone=True), default=utcnow, nullable=False)
+
+    client = relationship("Client")
