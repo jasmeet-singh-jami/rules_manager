@@ -21,4 +21,7 @@ def cron_jobs_dir(client_id: str) -> Path:
 
 
 def unique_filename(original: str) -> str:
-    return f"{uuid.uuid4()}_{original}"
+    safe = Path(original).name
+    if not safe:
+        safe = "upload"
+    return f"{uuid.uuid4()}_{safe}"
