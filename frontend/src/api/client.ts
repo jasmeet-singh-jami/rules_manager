@@ -63,6 +63,31 @@ export interface Deployment {
   created_at: string
 }
 
+export interface KnowledgeDocument {
+  id: string
+  client_id: string
+  category: string
+  name: string
+  description: string | null
+  filename: string
+  file_size: number
+  mime_type: string
+  uploaded_by: string | null
+  created_at: string
+}
+
+export interface CronJob {
+  id: string
+  client_id: string
+  name: string
+  description: string | null
+  filename: string
+  file_size: number
+  mime_type: string
+  uploaded_by: string | null
+  created_at: string
+}
+
 export interface ParsedRulePreview {
   name: string
   condition_raw: string
@@ -249,3 +274,99 @@ export const confirmImport = (payload: ImportConfirmPayload) =>
     method: 'POST',
     body: JSON.stringify(payload),
   })
+
+// ── Knowledge Base ────────────────────────────────────────────────────────────
+
+export interface KnowledgeDocFilters {
+  client_id?: string
+  category?: string
+}
+
+export const getKnowledgeDocs = (filters: KnowledgeDocFilters = {}) => {
+  const params = new URLSearchParams()
+  if (filters.client_id) params.set('client_id', filters.client_id)
+  if (filters.category) params.set('category', filters.category)
+  const qs = params.toString()
+  return request<KnowledgeDocument[]>(`/knowledge${qs ? `?${qs}` : ''}`)
+}
+
+export const uploadKnowledgeDoc = async (params: {
+  client_id: string
+  category: string
+  name: string
+  description?: string
+  file: File
+}): Promise<KnowledgeDocument> => {
+  const form = new FormData()
+  form.append('client_id', params.client_id)
+  form.append('category', params.category)
+  form.append('name', params.name)
+  if (params.description) form.append('description', params.description)
+  form.append('file', params.file)
+  const token = localStorage.getItem('auth_token')
+  const headers: Record<string, string> = {}
+  if (token) headers['Authorization'] = `Bearer ${token}`
+  const res = await fetch(`${BASE}/knowledge`, { method: 'POST', body: form, headers })
+  if (res.status === 401) {
+    localStorage.removeItem('auth_token')
+    localStorage.removeItem('auth_user')
+    localStorage.removeItem('auth_client_access')
+    window.location.href = '/login'
+    throw new Error('Unauthorized')
+  }
+  if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`)
+  return res.json() as Promise<KnowledgeDocument>
+}
+
+export const downloadKnowledgeDoc = (id: string): Promise<Response> => {
+  const token = localStorage.getItem('auth_token')
+  const headers: Record<string, string> = {}
+  if (token) headers['Authorization'] = `Bearer ${token}`
+  return fetch(`${BASE}/knowledge/${id}/download`, { headers })
+}
+
+export const deleteKnowledgeDoc = (id: string) =>
+  request<void>(`/knowledge/${id}`, { method: 'DELETE' })
+
+// ── Cron Jobs ─────────────────────────────────────────────────────────────────
+
+export const getCronJobs = (client_id?: string) => {
+  const qs = client_id ? `?client_id=${client_id}` : ''
+  return request<CronJob[]>(`/cron-jobs${qs}`)
+}
+
+export const uploadCronJob = async (params: {
+  client_id: string
+  name: string
+  description?: string
+  file: File
+}): Promise<CronJob> => {
+  const form = new FormData()
+  form.append('client_id', params.client_id)
+  form.append('name', params.name)
+  if (params.description) form.append('description', params.description)
+  form.append('file', params.file)
+  const token = localStorage.getItem('auth_token')
+  const headers: Record<string, string> = {}
+  if (token) headers['Authorization'] = `Bearer ${token}`
+  const res = await fetch(`${BASE}/cron-jobs`, { method: 'POST', body: form, headers })
+  if (res.status === 401) {
+    localStorage.removeItem('auth_token')
+    localStorage.removeItem('auth_user')
+    localStorage.removeItem('auth_client_access')
+    window.location.href = '/login'
+    throw new Error('Unauthorized')
+  }
+  if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`)
+  return res.json() as Promise<CronJob>
+}
+
+export const downloadCronJob = (id: string): Promise<Response> => {
+  const token = localStorage.getItem('auth_token')
+  const headers: Record<string, string> = {}
+  if (token) headers['Authorization'] = `Bearer ${token}`
+  return fetch(`${BASE}/cron-jobs/${id}/download`, { headers })
+}
+
+export const deleteCronJob = (id: string) =>
+  request<void>(`/cron-jobs/${id}`, { method: 'DELETE' })
