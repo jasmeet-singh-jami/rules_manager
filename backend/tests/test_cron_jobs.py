@@ -1,4 +1,5 @@
 import io
+import uuid
 import pytest
 
 
@@ -81,3 +82,58 @@ async def test_delete_cron_job(authed_client, tmp_path, monkeypatch):
 async def test_delete_nonexistent_cron_job(authed_client):
     r = await authed_client.delete("/api/cron-jobs/00000000-0000-0000-0000-000000000000")
     assert r.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_upload_cron_job_unknown_client(authed_client, tmp_path, monkeypatch):
+    monkeypatch.setenv("UPLOADS_DIR", str(tmp_path))
+    content = b"echo hello"
+    res = await authed_client.post(
+        "/api/cron-jobs",
+        data={
+            "client_id": str(uuid.uuid4()),  # nonexistent
+            "name": "orphan",
+        },
+        files={"file": ("run.sh", io.BytesIO(content), "text/plain")},
+    )
+    assert res.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_download_cron_job_contributor_no_access(client, authed_client, tmp_path, monkeypatch):
+    """Contributor without access to the client gets 403 on download."""
+    client_id = await _make_client(authed_client, "DLCONT")
+    r, _ = await _upload_job(authed_client, client_id, tmp_path, monkeypatch)
+    job_id = r.json()["id"]
+
+    reg = await client.post(
+        "/api/auth/register",
+        json={"username": "contrib_cron_dl", "password": "password123"},
+    )
+    contrib_token = reg.json()["token"]
+
+    res = await client.get(
+        f"/api/cron-jobs/{job_id}/download",
+        headers={"Authorization": f"Bearer {contrib_token}"},
+    )
+    assert res.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_delete_cron_job_contributor_no_access(client, authed_client, tmp_path, monkeypatch):
+    """Contributor without access to the client gets 403 on delete."""
+    client_id = await _make_client(authed_client, "DELCONT")
+    r, _ = await _upload_job(authed_client, client_id, tmp_path, monkeypatch)
+    job_id = r.json()["id"]
+
+    reg = await client.post(
+        "/api/auth/register",
+        json={"username": "contrib_cron_del", "password": "password123"},
+    )
+    contrib_token = reg.json()["token"]
+
+    res = await client.delete(
+        f"/api/cron-jobs/{job_id}",
+        headers={"Authorization": f"Bearer {contrib_token}"},
+    )
+    assert res.status_code == 403

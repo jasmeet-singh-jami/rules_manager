@@ -118,8 +118,8 @@ async def delete_cron_job(
 
     await check_client_access(current_user, job.client_id, db)
 
+    await db.delete(job)
+    await db.commit()
     file_path = Path(job.file_path)
     if file_path.exists():
         file_path.unlink()
-    await db.delete(job)
-    await db.commit()
