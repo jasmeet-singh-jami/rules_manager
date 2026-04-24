@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { useClients } from '../../context/ClientContext'
@@ -17,6 +17,8 @@ const WORKSPACE: NavEntry[] = [
   { to: '/', icon: 'home', label: 'Overview' },
   { to: '/rules', icon: 'rules', label: 'Rules' },
   { to: '/deployments', icon: 'deploy', label: 'Deployments' },
+  { to: '/knowledge', icon: 'folder', label: 'Knowledge Base' },
+  { to: '/cron-jobs', icon: 'clock', label: 'Cron Jobs' },
   { to: '/clients', icon: 'clients', label: 'Clients' },
   { to: '/import', icon: 'import', label: 'Import DRL' },
 ]
@@ -29,33 +31,33 @@ const SETTINGS: NavEntry[] = [
 export function Sidebar() {
   const { user, isAdmin } = useAuth()
   const username = user?.username ?? ''
+  const roleLabel = useMemo(() => {
+    if (!user?.role) return 'User'
+    return user.role === 'admin' ? 'Administrator' : 'Contributor'
+  }, [user?.role])
   const location = useLocation()
-  const { clients, selectedClientId, setSelectedClientId } = useClients()
-  const [switcherOpen, setSwitcherOpen] = useState(false)
-  const switcherRef = useRef<HTMLDivElement>(null)
+  const { selectedClientId, rulesVersion } = useClients()
   const [ruleTypes, setRuleTypes] = useState<RuleType[]>([])
   const [rulesForClient, setRulesForClient] = useState<Rule[]>([])
   const onRulesPage = location.pathname.startsWith('/rules')
+  const onKnowledgePage = location.pathname.startsWith('/knowledge')
+
+  const KB_CATEGORIES = [
+    { slug: 'integrations', label: 'Integrations' },
+    { slug: 'automations', label: 'Automations' },
+    { slug: 'issues', label: 'Issues' },
+  ]
 
   useEffect(() => { getRuleTypes().then(setRuleTypes).catch(() => {}) }, [])
   useEffect(() => {
-    if (!selectedClientId) { setRulesForClient([]); return }
-    getRules({ client_id: selectedClientId }).then(setRulesForClient).catch(() => {})
-  }, [selectedClientId])
-
-  useEffect(() => {
-    if (!switcherOpen) return
-    function handleOutside(e: MouseEvent) {
-      if (switcherRef.current && !switcherRef.current.contains(e.target as Node)) {
-        setSwitcherOpen(false)
-      }
+    if (!selectedClientId) {
+      setRulesForClient([])
+      return
     }
-    document.addEventListener('mousedown', handleOutside)
-    return () => document.removeEventListener('mousedown', handleOutside)
-  }, [switcherOpen])
+    getRules({ client_id: selectedClientId }).then(setRulesForClient).catch(() => {})
+  }, [selectedClientId, rulesVersion])
 
-  const selectedClient = clients.find(c => c.id === selectedClientId)
-  const countByType = (id: string) => rulesForClient.filter(r => r.rule_type_id === id).length
+  const countByType = (id: string) => rulesForClient.filter(rule => rule.rule_type_id === id).length
 
   const renderItem = (entry: NavEntry) => {
     if (entry.adminOnly && !isAdmin) return null
@@ -90,13 +92,33 @@ export function Sidebar() {
         <div className="sidebar-section">
           <div className="sidebar-section-label">Rule Types</div>
           <div className="nav-sub">
-            {ruleTypes.map(rt => {
-              const isActive = location.pathname === `/rules/${rt.slug}` ||
-                               location.pathname.startsWith(`/rules/${rt.slug}/`)
+            {ruleTypes.map(ruleType => {
+              const isActive = location.pathname === `/rules/${ruleType.slug}` ||
+                               location.pathname.startsWith(`/rules/${ruleType.slug}/`)
               return (
-                <NavLink key={rt.id} to={`/rules/${rt.slug}`} className={() => `nav-item${isActive ? ' active' : ''}`}>
-                  <span className="grow truncate">{rt.name}</span>
-                  <span className="count">{countByType(rt.id) || ''}</span>
+                <NavLink key={ruleType.id} to={`/rules/${ruleType.slug}`} className={() => `nav-item${isActive ? ' active' : ''}`}>
+                  <span className="grow truncate">{ruleType.name}</span>
+                  <span className="count">{countByType(ruleType.id) || ''}</span>
+                </NavLink>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {onKnowledgePage && (
+        <div className="sidebar-section">
+          <div className="sidebar-section-label">Categories</div>
+          <div className="nav-sub">
+            {KB_CATEGORIES.map(cat => {
+              const isActive = location.pathname === `/knowledge/${cat.slug}`
+              return (
+                <NavLink
+                  key={cat.slug}
+                  to={`/knowledge/${cat.slug}`}
+                  className={() => `nav-item${isActive ? ' active' : ''}`}
+                >
+                  <span className="grow truncate">{cat.label}</span>
                 </NavLink>
               )
             })}
@@ -113,26 +135,7 @@ export function Sidebar() {
         <div className="avatar">{(username || '?').slice(0, 2).toUpperCase()}</div>
         <div className="user-meta grow">
           <div className="user-name truncate">{username}</div>
-          <div ref={switcherRef} className="user-role truncate" style={{ position: 'relative' }}>
-            <button
-              className="btn sm ghost"
-              onClick={() => setSwitcherOpen(o => !o)}
-              style={{ padding: '0 6px', height: 20, fontSize: 11 }}
-            >
-              {selectedClient?.code ?? 'Pick client'} <Icon name="chevD" size={10} />
-            </button>
-            {switcherOpen && (
-              <div className="card" style={{ position: 'absolute', bottom: 24, left: 0, zIndex: 50, padding: 6, minWidth: 180 }}>
-                {clients.map(c => (
-                  <div key={c.id}
-                       className={`nav-item${c.id === selectedClientId ? ' active' : ''}`}
-                       onClick={() => { setSelectedClientId(c.id); setSwitcherOpen(false) }}>
-                    <span className="grow truncate">{c.code}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+          <div className="user-role truncate">{roleLabel}</div>
         </div>
       </div>
     </aside>
