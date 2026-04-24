@@ -79,7 +79,11 @@ async def upload_knowledge_doc(
         uploaded_by=current_user.id,
     )
     db.add(doc)
-    await db.commit()
+    try:
+        await db.commit()
+    except Exception:
+        dest_path.unlink(missing_ok=True)
+        raise
     await db.refresh(doc)
     return doc
 
@@ -125,7 +129,7 @@ async def delete_knowledge_doc(
     await check_client_access(current_user, doc.client_id, db)
 
     file_path = Path(doc.file_path)
-    await db.delete(doc)
-    await db.commit()
     if file_path.exists():
         file_path.unlink()
+    await db.delete(doc)
+    await db.commit()
