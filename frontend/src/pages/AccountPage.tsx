@@ -44,21 +44,33 @@ export function AccountPage() {
   }
 
   return (
-    <div style={{ maxWidth: 420, margin: '40px auto' }}>
-      <h2 style={{ marginBottom: 20 }}>Account</h2>
+    <div className="page">
+      <div className="page-head">
+        <h1 className="page-title">Account</h1>
+      </div>
+
       {mustChangePassword && (
-        <div className="glass-card" style={{ padding: '12px 20px', marginBottom: 16, borderLeft: '3px solid var(--warn, #f59e0b)' }}>
-          <p style={{ margin: 0, fontSize: 14 }}>You must set a new password before continuing.</p>
+        <div className="callout warn" style={{ marginBottom: 16 }}>
+          You must set a new password before continuing.
         </div>
       )}
-      <div className="glass-card" style={{ padding: 28 }}>
-        <h3 style={{ marginBottom: 20, fontSize: 16 }}>Change Password</h3>
+
+      <div className="card" style={{ maxWidth: 420 }}>
+        <h2 style={{ margin: '0 0 20px', fontSize: 16, fontWeight: 600 }}>Change Password</h2>
+
         {success && (
-          <p style={{ color: 'var(--ok)', marginBottom: 12 }}>Password updated successfully.</p>
+          <div className="callout ok" style={{ marginBottom: 14 }}>
+            Password updated successfully.
+          </div>
         )}
-        {error && <p className="error-msg" style={{ marginBottom: 12 }}>{error}</p>}
+        {error && (
+          <div className="callout danger" style={{ marginBottom: 14 }}>
+            {error}
+          </div>
+        )}
+
         <form onSubmit={handleSubmit}>
-          <div className="form-row">
+          <div className="field" style={{ marginBottom: 12 }}>
             <label htmlFor="current-password">Current Password</label>
             <input
               id="current-password"
@@ -69,7 +81,7 @@ export function AccountPage() {
               autoFocus
             />
           </div>
-          <div className="form-row">
+          <div className="field" style={{ marginBottom: 12 }}>
             <label htmlFor="new-password">New Password</label>
             <input
               id="new-password"
@@ -79,7 +91,7 @@ export function AccountPage() {
               required
             />
           </div>
-          <div className="form-row">
+          <div className="field" style={{ marginBottom: 20 }}>
             <label htmlFor="confirm-password">Confirm Password</label>
             <input
               id="confirm-password"
@@ -89,12 +101,7 @@ export function AccountPage() {
               required
             />
           </div>
-          <button
-            className="btn-primary"
-            type="submit"
-            disabled={loading}
-            style={{ marginTop: 8 }}
-          >
+          <button type="submit" className="btn accent" disabled={loading}>
             {loading ? 'Saving…' : 'Update Password'}
           </button>
         </form>

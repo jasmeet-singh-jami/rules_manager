@@ -7,7 +7,7 @@ from fastapi.staticfiles import StaticFiles
 from database import engine, Base
 from seed_data import seed_rule_types, seed_admin_user
 from database import AsyncSessionLocal
-from routers import clients, rule_types, rules, deployments, import_drl, auth, admin
+from routers import clients, rule_types, rules, deployments, import_drl, auth, admin, functions, knowledge_base, cron_jobs
 
 
 @asynccontextmanager
@@ -37,6 +37,9 @@ app.include_router(deployments.router, prefix="/api")
 app.include_router(import_drl.router, prefix="/api")
 app.include_router(auth.router, prefix="/api")
 app.include_router(admin.router, prefix="/api")
+app.include_router(functions.router, prefix="/api")
+app.include_router(knowledge_base.router, prefix="/api")
+app.include_router(cron_jobs.router, prefix="/api")
 
 
 @app.get("/api/health")

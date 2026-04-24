@@ -35,10 +35,40 @@ class RuleType(Base):
     name = Column(String(100), nullable=False)
     pipeline_stage = Column(Integer, nullable=False)
     drl_package = Column(String(200), nullable=False)
-    drl_imports = Column(Text, nullable=False)
-    drl_functions = Column(Text, nullable=True)
 
     rules = relationship("Rule", back_populates="rule_type")
+    functions = relationship("DrlFunction", back_populates="rule_type", cascade="all, delete-orphan", lazy="selectin")
+    imports = relationship("DrlImport", back_populates="rule_type", cascade="all, delete-orphan", lazy="selectin")
+
+
+DrlImportKind = SAEnum("import", "global", name="drl_import_kind")
+
+
+class DrlFunction(Base):
+    __tablename__ = "drl_functions"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    rule_type_id = Column(UUID(as_uuid=True), ForeignKey("rule_types.id", ondelete="CASCADE"), nullable=False)
+    name = Column(String(100), nullable=False)
+    body = Column(Text, nullable=False)
+
+    rule_type = relationship("RuleType", back_populates="functions")
+
+    __table_args__ = (UniqueConstraint("rule_type_id", "name", name="uq_drl_function_name"),)
+
+
+class DrlImport(Base):
+    __tablename__ = "drl_imports"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    rule_type_id = Column(UUID(as_uuid=True), ForeignKey("rule_types.id", ondelete="CASCADE"), nullable=False)
+    statement = Column(Text, nullable=False)
+    kind = Column(DrlImportKind, nullable=False, default="import")
+    is_shared = Column(Boolean, default=False, nullable=False)
+
+    rule_type = relationship("RuleType", back_populates="imports")
+
+    __table_args__ = (UniqueConstraint("rule_type_id", "statement", name="uq_drl_import_stmt"),)
 
 
 class Rule(Base):
@@ -55,8 +85,9 @@ class Rule(Base):
     condition_meta = Column(JSONB, nullable=True)
     action_meta = Column(JSONB, nullable=True)
     enabled = Column(Boolean, default=True, nullable=False)
-    priority = Column(String(10), nullable=True)
     window = Column(Integer, nullable=True)
+    required_function_names = Column(JSONB, nullable=True)
+    required_import_statements = Column(JSONB, nullable=True)
     created_at = Column(TIMESTAMP(timezone=True), default=utcnow, nullable=False)
     updated_at = Column(TIMESTAMP(timezone=True), default=utcnow, onupdate=utcnow, nullable=False)
 
@@ -142,3 +173,60 @@ class UserClientAccess(Base):
     client = relationship("Client")
 
     __table_args__ = (UniqueConstraint("user_id", "client_id", name="uq_user_client"),)
+
+
+AccessRequestStatus = SAEnum("pending", "approved", "denied", name="access_request_status")
+
+
+class ClientAccessRequest(Base):
+    __tablename__ = "client_access_requests"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    client_id = Column(UUID(as_uuid=True), ForeignKey("clients.id", ondelete="CASCADE"), nullable=False)
+    status = Column(AccessRequestStatus, nullable=False, default="pending")
+    requested_at = Column(TIMESTAMP(timezone=True), default=utcnow, nullable=False)
+    reviewed_at = Column(TIMESTAMP(timezone=True), nullable=True)
+    reviewed_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+
+    user = relationship("User", foreign_keys=[user_id])
+    client = relationship("Client")
+    reviewed_by = relationship("User", foreign_keys=[reviewed_by_id])
+
+
+KbCategory = SAEnum("integrations", "automations", "issues", name="kb_category")
+
+
+class KnowledgeDocument(Base):
+    __tablename__ = "knowledge_documents"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    client_id = Column(UUID(as_uuid=True), ForeignKey("clients.id", ondelete="CASCADE"), nullable=False)
+    category = Column(KbCategory, nullable=False)
+    name = Column(String(150), nullable=False)
+    description = Column(Text, nullable=True)
+    filename = Column(String(255), nullable=False)
+    file_path = Column(Text, nullable=False)
+    file_size = Column(Integer, nullable=False)
+    mime_type = Column(String(100), nullable=False)
+    uploaded_by = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    created_at = Column(TIMESTAMP(timezone=True), default=utcnow, nullable=False)
+
+    client = relationship("Client", viewonly=True)
+
+
+class CronJob(Base):
+    __tablename__ = "cron_jobs"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    client_id = Column(UUID(as_uuid=True), ForeignKey("clients.id", ondelete="CASCADE"), nullable=False)
+    name = Column(String(150), nullable=False)
+    description = Column(Text, nullable=True)
+    filename = Column(String(255), nullable=False)
+    file_path = Column(Text, nullable=False)
+    file_size = Column(Integer, nullable=False)
+    mime_type = Column(String(100), nullable=False)
+    uploaded_by = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    created_at = Column(TIMESTAMP(timezone=True), default=utcnow, nullable=False)
+
+    client = relationship("Client", viewonly=True)

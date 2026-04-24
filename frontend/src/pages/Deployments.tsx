@@ -1,127 +1,219 @@
-import { useEffect, useState } from 'react'
-import { useParams, Link } from 'react-router-dom'
-import { Client, Deployment, getClients, getDeployments, createDeployment, exportDeployment } from '../api/client'
+import { useEffect, useMemo, useState } from 'react'
+import { useParams } from 'react-router-dom'
+import { getClients, getDeployments, createDeployment, type Client, type Deployment } from '../api/client'
 import { useAuth } from '../context/AuthContext'
+import { SkeletonRows } from '../components/Skeleton'
+import { EmptyState } from '../components/EmptyState'
+import { Icon } from '../components/Icon'
+import { useToast } from '../components/Toast'
+
+type Row = Deployment & { client_code: string; client_name: string }
+
+interface DeployForm { version: string; notes: string; client_id: string }
 
 export function Deployments() {
+  const { id: scopedClientId } = useParams<{ id?: string }>()
+  const global = !scopedClientId
   const { hasEditAccess } = useAuth()
-  const { id: clientId } = useParams<{ id: string }>()
-  const [client, setClient] = useState<Client | null>(null)
-  const [deployments, setDeployments] = useState<Deployment[]>([])
+  const { toast } = useToast()
+
+  const [clients, setClients] = useState<Client[]>([])
+  const [rows, setRows] = useState<Row[]>([])
   const [loading, setLoading] = useState(true)
-  const [showForm, setShowForm] = useState(false)
-  const [form, setForm] = useState({ version: '', notes: '' })
+  const [q, setQ] = useState('')
+  const [statusFilter, setStatusFilter] = useState<'' | Deployment['status']>('')
+  const [clientFilter, setClientFilter] = useState<string>('')
+  const [showModal, setShowModal] = useState(false)
+  const [form, setForm] = useState<DeployForm>({ version: '', notes: '', client_id: '' })
   const [saving, setSaving] = useState(false)
-  const [error, setError] = useState('')
+  const [formError, setFormError] = useState('')
 
   useEffect(() => {
-    if (!clientId) return
-    Promise.all([
-      getClients().then(cs => cs.find(c => c.id === clientId) ?? null),
-      getDeployments(clientId),
-    ]).then(([c, deps]) => {
-      setClient(c)
-      setDeployments(deps)
-    }).catch(() => {
-      setError('Failed to load deployments')
-    }).finally(() => setLoading(false))
-  }, [clientId])
+    let cancel = false
+    setLoading(true)
+    getClients()
+      .then(async cs => {
+        if (cancel) return
+        setClients(cs)
+        const scope = scopedClientId ? cs.filter(c => c.id === scopedClientId) : cs
+        const all = await Promise.all(scope.map(async c => {
+          const deps = await getDeployments(c.id).catch(() => [])
+          return deps.map(d => ({ ...d, client_code: c.code, client_name: c.name }))
+        }))
+        if (cancel) return
+        const flat = all.flat().sort((a, b) => b.created_at.localeCompare(a.created_at))
+        setRows(flat)
+      })
+      .finally(() => !cancel && setLoading(false))
+    return () => { cancel = true }
+  }, [scopedClientId])
 
-  async function handleCreate() {
-    if (!form.version.trim()) { setError('Version is required'); return }
-    setSaving(true); setError('')
-    try {
-      const dep = await createDeployment({ client_id: clientId!, version: form.version, notes: form.notes || undefined })
-      setDeployments(prev => [dep, ...prev])
-      setShowForm(false)
-      setForm({ version: '', notes: '' })
-    } catch { setError('Failed to create deployment') }
-    finally { setSaving(false) }
-  }
+  const openModal = () => { setForm({ version: '', notes: '', client_id: scopedClientId ?? '' }); setFormError(''); setShowModal(true) }
+  const closeModal = () => setShowModal(false)
 
-  async function handleDownload(dep: Deployment) {
+  const handleCreate = async () => {
+    if (!form.version.trim()) { setFormError('Version is required'); return }
+    const targetClientId = form.client_id || scopedClientId
+    if (!targetClientId) { setFormError('Client is required'); return }
+    setSaving(true)
+    setFormError('')
     try {
-      const res = await exportDeployment(dep.id)
-      const blob = await res.blob()
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `deployment_${dep.version}.zip`
-      a.click()
-      URL.revokeObjectURL(url)
+      const dep = await createDeployment({ client_id: targetClientId, version: form.version.trim(), notes: form.notes.trim() || undefined })
+      const client = clients.find(c => c.id === targetClientId)
+      setRows(prev => [{ ...dep, client_code: client?.code ?? '', client_name: client?.name ?? '' }, ...prev])
+      toast('Deployment created', 'ok')
+      closeModal()
     } catch {
-      setError('Failed to download deployment ZIP')
+      setFormError('Failed to create deployment — version may already exist')
+    } finally {
+      setSaving(false)
     }
   }
 
+  const filtered = useMemo(() => {
+    const ql = q.trim().toLowerCase()
+    return rows.filter(r =>
+      (!statusFilter || r.status === statusFilter) &&
+      (!clientFilter || r.client_id === clientFilter) &&
+      (!ql || r.version.toLowerCase().includes(ql) ||
+              (r.notes ?? '').toLowerCase().includes(ql) ||
+              r.client_code.toLowerCase().includes(ql))
+    )
+  }, [rows, q, statusFilter, clientFilter])
+
+  const scopedClient = clients.find(c => c.id === scopedClientId)
+
+  const accessibleClients = clients.filter(c => hasEditAccess(c.id))
+  const canCreateDeployment = global
+    ? accessibleClients.length > 0
+    : !!scopedClientId && hasEditAccess(scopedClientId)
+
   return (
-    <>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '20px 0 6px' }}>
+    <div className="page">
+      <div className="page-head">
         <div>
-          <Link to="/clients" style={{ color: 'var(--accent)', fontSize: 13 }}>← Clients</Link>
-          <h2 style={{ margin: '4px 0 0' }}>
-            Deployments {client ? `— ${client.name}` : ''}
-          </h2>
+          <h1 className="page-title">{global ? 'Deployments' : `Deployments · ${scopedClient?.code ?? ''}`}</h1>
+          <div className="page-sub">
+            {global ? 'History across all clients' : 'Per-client deployment history'}
+          </div>
         </div>
-        {hasEditAccess(clientId ?? '') && (
-          <button className="btn-primary" onClick={() => setShowForm(true)}>+ New Deployment</button>
+        {canCreateDeployment && (
+          <div className="page-actions">
+            <button className="btn accent" onClick={openModal}>
+              <Icon name="plus" /> New Deployment
+            </button>
+          </div>
         )}
       </div>
 
-      {showForm && (
-        <div className="glass-card" style={{ padding: 20, marginBottom: 16 }}>
-          <h3 style={{ margin: '0 0 14px' }}>Create Deployment</h3>
-          {error && <p className="error-msg">{error}</p>}
-          <div className="form-grid">
-            <div className="form-row">
-              <label htmlFor="dep-version">Version</label>
-              <input id="dep-version" placeholder="e.g. v1.2" value={form.version}
-                onChange={e => setForm(f => ({ ...f, version: e.target.value }))} />
-            </div>
-            <div className="form-row">
-              <label htmlFor="dep-notes">Release Notes</label>
-              <input id="dep-notes" placeholder="Optional" value={form.notes}
-                onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} />
-            </div>
-          </div>
-          <div className="form-actions">
-            <button className="btn-outline" onClick={() => setShowForm(false)}>Cancel</button>
-            <button className="btn-primary" onClick={handleCreate} disabled={saving}>
-              {saving ? 'Creating…' : 'Create & Snapshot Rules'}
-            </button>
-          </div>
+      <div className="toolbar">
+        <div className="tb-input">
+          <Icon name="search" />
+          <input value={q} onChange={e => setQ(e.target.value)}
+                 placeholder="Search deployments…" />
         </div>
-      )}
+        {global && (
+          <select className="select" value={clientFilter}
+                  onChange={e => setClientFilter(e.target.value)}>
+            <option value="">All clients</option>
+            {clients.map(c => <option key={c.id} value={c.id}>{c.code}</option>)}
+          </select>
+        )}
+        <select className="select" value={statusFilter}
+                onChange={e => setStatusFilter(e.target.value as '' | Deployment['status'])}>
+          <option value="">All statuses</option>
+          <option value="draft">Draft</option>
+          <option value="deployed">Deployed</option>
+        </select>
+        <div className="tb-spacer" />
+        <span className="tb-meta">{filtered.length} deployments</span>
+      </div>
 
-      {loading && <p className="muted">Loading…</p>}
-
-      <div className="glass-card" style={{ overflow: 'hidden' }}>
-        <table>
+      <div className="table-wrap">
+        <table className="rules">
           <thead>
-            <tr><th>Version</th><th>Status</th><th>Notes</th><th>Created</th><th>Export</th></tr>
+            <tr>
+              <th className="col-id">Version</th>
+              {global && <th>Client</th>}
+              <th>Status</th>
+              <th>Notes</th>
+              <th className="col-updated">Created</th>
+            </tr>
           </thead>
           <tbody>
-            {deployments.map(dep => (
-              <tr key={dep.id}>
-                <td><strong>{dep.version}</strong></td>
-                <td><span className={`badge ${dep.status === 'deployed' ? 'badge-ok' : 'badge-muted'}`}>{dep.status}</span></td>
-                <td className="muted">{dep.notes ?? '—'}</td>
-                <td className="muted" style={{ fontSize: 12 }}>{new Date(dep.created_at).toLocaleString()}</td>
-                <td>
-                  <button className="btn-outline btn-sm" onClick={() => handleDownload(dep)}>
-                    ↓ ZIP
-                  </button>
-                </td>
-              </tr>
-            ))}
-            {!loading && deployments.length === 0 && (
-              <tr><td colSpan={5} style={{ textAlign: 'center', color: 'var(--muted)', padding: 24 }}>
-                No deployments yet.
-              </td></tr>
-            )}
+            {loading ? <SkeletonRows count={5} cols={global ? 5 : 4} /> :
+              filtered.length === 0 ? (
+                <tr><td colSpan={global ? 5 : 4}>
+                  <EmptyState icon="deploy" title="No deployments yet"
+                    body="" />
+                </td></tr>
+              ) : filtered.map(r => (
+                <tr key={r.id}>
+                  <td><span className="cell-id">{r.version}</span></td>
+                  {global && <td className="cell-name">{r.client_code}</td>}
+                  <td>
+                    <span className={`badge ${r.status === 'deployed' ? 'ok' : 'warn'}`}>
+                      <span className="dot" /> {r.status}
+                    </span>
+                  </td>
+                  <td className="small">{r.notes ?? <span className="muted">—</span>}</td>
+                  <td><span className="muted small">{new Date(r.created_at).toLocaleString()}</span></td>
+                </tr>
+              ))}
           </tbody>
         </table>
       </div>
-    </>
+
+      {showModal && (
+        <div className="modal-backdrop" onClick={closeModal}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <h2>New Deployment</h2>
+            {formError && <div className="callout danger small" style={{ marginBottom: 14 }}>{formError}</div>}
+            {global && (
+              <div className="field" style={{ marginBottom: 12 }}>
+                <label htmlFor="dep-client">Client</label>
+                <select
+                  id="dep-client"
+                  className="select"
+                  value={form.client_id}
+                  onChange={e => setForm(f => ({ ...f, client_id: e.target.value }))}
+                >
+                  <option value="">Select a client…</option>
+                  {accessibleClients.map(c => (
+                    <option key={c.id} value={c.id}>{c.code} — {c.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+            <div className="field" style={{ marginBottom: 12 }}>
+              <label htmlFor="dep-version">Version</label>
+              <input
+                id="dep-version"
+                type="text"
+                placeholder="e.g. 1.0.0"
+                value={form.version}
+                onChange={e => setForm(f => ({ ...f, version: e.target.value }))}
+              />
+            </div>
+            <div className="field" style={{ marginBottom: 20 }}>
+              <label htmlFor="dep-notes">Notes</label>
+              <input
+                id="dep-notes"
+                type="text"
+                placeholder="Optional release notes"
+                value={form.notes}
+                onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
+              />
+            </div>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button className="btn ghost" onClick={closeModal}>Cancel</button>
+              <button className="btn accent" onClick={handleCreate} disabled={saving}>
+                {saving ? 'Creating...' : 'Create'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   )
 }

@@ -2,10 +2,10 @@ from uuid import UUID
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_
+from sqlalchemy import select, and_, or_, String
 
 from database import get_db
-from models import Rule, Client, RuleType, User
+from models import Rule, Client, RuleType, User, DrlFunction, DrlImport
 from schemas import RuleCreate, RuleUpdate, RuleOut, RuleCopyRequest, RuleExportRequest
 from auth_deps import get_current_user, check_client_access
 from services.drl_generator import generate_drl_bundle
@@ -19,7 +19,7 @@ async def list_rules(
     rule_type: Optional[str] = Query(None),
     tool: Optional[str] = Query(None),
     search: Optional[str] = Query(None),
-    _: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     stmt = select(Rule)
@@ -27,7 +27,11 @@ async def list_rules(
     if client_id:
         conditions.append(Rule.client_id == client_id)
     if rule_type:
-        rt_result = await db.execute(select(RuleType).where(RuleType.slug == rule_type))
+        rt_result = await db.execute(
+            select(RuleType).where(
+                or_(RuleType.slug == rule_type, RuleType.id.cast(String) == rule_type)
+            )
+        )
         rt = rt_result.scalar_one_or_none()
         if rt:
             conditions.append(Rule.rule_type_id == rt.id)
@@ -131,28 +135,31 @@ async def export_rules(
     )
     rule_types = rt_result.scalars().all()
 
-    rt_rules: list[tuple[dict, list[dict]]] = []
+    entries: list[tuple[dict, list[dict], list[dict], list[dict]]] = []
     for rt in rule_types:
+        funcs_result = await db.execute(select(DrlFunction).where(DrlFunction.rule_type_id == rt.id))
+        imps_result = await db.execute(select(DrlImport).where(DrlImport.rule_type_id == rt.id))
+        funcs = [{"name": f.name, "body": f.body} for f in funcs_result.scalars().all()]
+        imps = [{"statement": i.statement, "kind": i.kind, "is_shared": i.is_shared} for i in imps_result.scalars().all()]
         rt_dict = {
             "id": str(rt.id),
             "slug": rt.slug,
-            "name": rt.name,
-            "pipeline_stage": rt.pipeline_stage,
             "drl_package": rt.drl_package,
-            "drl_imports": rt.drl_imports,
-            "drl_functions": rt.drl_functions,
+            "pipeline_stage": rt.pipeline_stage,
         }
         rule_dicts = [
             {
                 "name": r.name,
                 "condition_raw": r.condition_raw or "",
                 "action_raw": r.action_raw or "",
+                "required_function_names": r.required_function_names or [],
+                "required_import_statements": r.required_import_statements or [],
             }
             for r in rt_id_to_rules.get(str(rt.id), [])
         ]
-        rt_rules.append((rt_dict, rule_dicts))
+        entries.append((rt_dict, funcs, imps, rule_dicts))
 
-    zip_bytes = generate_drl_bundle(rt_rules)
+    zip_bytes = generate_drl_bundle(entries)
     return Response(
         content=zip_bytes,
         media_type="application/zip",
@@ -186,7 +193,6 @@ async def copy_rule(
         condition_meta=original.condition_meta,
         action_meta=original.action_meta,
         enabled=original.enabled,
-        priority=original.priority,
         window=original.window,
     )
     db.add(copy)

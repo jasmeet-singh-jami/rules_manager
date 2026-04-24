@@ -1,56 +1,73 @@
-import { render, screen, waitFor, fireEvent } from '@testing-library/react'
-import { vi } from 'vitest'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
+import { describe, expect, it, vi } from 'vitest'
 import { ImportDrl } from './ImportDrl'
-import { AuthProvider } from '../context/AuthContext'
-import * as api from '../api/client'
 
-vi.mock('../api/client')
+const setSelectedClientId = vi.fn()
+const toast = vi.fn()
 
-const mockRuleTypes = [
-  { id: 'rt1', slug: 'alert_classifier', name: 'Alert Classifier', pipeline_stage: 1,
-    drl_package: '', drl_imports: '', drl_functions: null },
-]
-const mockClients = [
-  { id: 'c1', code: 'INFY', name: 'Infosys', description: null, created_at: '' },
-]
-const mockPreview = {
-  filename: 'test.drl',
-  package: 'com.example',
-  rule_count: 2,
-  rules: [
-    { name: 'Rule_1', condition_raw: 'cond1', action_raw: 'act1' },
-    { name: 'Rule_2', condition_raw: 'cond2', action_raw: 'act2' },
-  ],
-}
+vi.mock('../context/ClientContext', () => ({
+  useClients: () => ({
+    clients: [
+      { id: 'c1', code: 'INFY', name: 'Infosys', description: null, created_at: '' },
+      { id: 'c2', code: 'PVH', name: 'PVH', description: null, created_at: '' },
+    ],
+    selectedClientId: 'c1',
+    setSelectedClientId,
+  }),
+}))
 
-beforeEach(() => {
-  vi.mocked(api.getRuleTypes).mockResolvedValue(mockRuleTypes)
-  vi.mocked(api.getClients).mockResolvedValue(mockClients)
-  vi.mocked(api.parseDrlFile).mockResolvedValue(mockPreview)
-  vi.mocked(api.confirmImport).mockResolvedValue({ imported: 2, rule_ids: ['r1', 'r2'] })
-})
+vi.mock('../context/AuthContext', () => ({
+  useAuth: () => ({
+    hasEditAccess: (clientId: string) => clientId === 'c1',
+  }),
+}))
 
-describe('ImportDrl page', () => {
-  it('renders page heading', () => {
-    render(<AuthProvider><MemoryRouter><ImportDrl /></MemoryRouter></AuthProvider>)
-    expect(screen.getByText('Import DRL')).toBeInTheDocument()
+vi.mock('../components/Toast', () => ({ useToast: () => ({ toast }) }))
+
+const { getRuleTypes, getRules, confirmImport } = vi.hoisted(() => ({
+  getRuleTypes: vi.fn(async () => [
+    { id: 'rt1', slug: 'alert_classifier', name: 'Alert Classifier', pipeline_stage: 1, drl_package: 'com.x', functions: [], imports: [] },
+  ]),
+  getRules: vi.fn(async () => []),
+  confirmImport: vi.fn(async () => ({ imported: 1, rule_ids: ['r1'] })),
+}))
+
+vi.mock('../api/client', () => ({
+  getRuleTypes,
+  getRules,
+  parseDrlFile: vi.fn(),
+  confirmImport,
+}))
+
+describe('ImportDrl', () => {
+  it('shows accessible clients and loads duplicate names for the selected client and rule type', async () => {
+    render(
+      <MemoryRouter>
+        <ImportDrl />
+      </MemoryRouter>,
+    )
+
+    const selects = await screen.findAllByRole('combobox')
+    expect(screen.getByRole('option', { name: 'INFY - Infosys' })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: 'PVH - PVH' })).toBeInTheDocument()
+
+    fireEvent.change(selects[1], { target: { value: 'rt1' } })
+    await waitFor(() => expect(getRules).toHaveBeenCalledWith({ client_id: 'c1', rule_type: 'alert_classifier' }))
+
+    fireEvent.change(selects[0], { target: { value: 'c2' } })
+    expect(setSelectedClientId).toHaveBeenCalledWith('c2')
+    await waitFor(() => expect(getRules).toHaveBeenLastCalledWith({ client_id: 'c2', rule_type: 'alert_classifier' }))
   })
 
-  it('shows file upload area', () => {
-    render(<AuthProvider><MemoryRouter><ImportDrl /></MemoryRouter></AuthProvider>)
-    expect(screen.getByText(/drop a .drl file/i)).toBeInTheDocument()
-  })
+  it('preselects the requested rule type from the URL', async () => {
+    render(
+      <MemoryRouter initialEntries={['/import?rule_type=alert_classifier']}>
+        <ImportDrl />
+      </MemoryRouter>,
+    )
 
-  it('shows preview table after file upload', async () => {
-    render(<AuthProvider><MemoryRouter><ImportDrl /></MemoryRouter></AuthProvider>)
-    await waitFor(() => screen.getByText('Infosys (INFY)'))
-
-    const file = new File(['package com.test;'], 'test.drl', { type: 'text/plain' })
-    const input = document.querySelector('input[type="file"]') as HTMLInputElement
-    fireEvent.change(input, { target: { files: [file] } })
-
-    await waitFor(() => screen.getByText('Rule_1'))
-    expect(screen.getByText('Rule_2')).toBeInTheDocument()
+    const selects = await screen.findAllByRole('combobox')
+    await waitFor(() => expect(selects[1]).toHaveValue('rt1'))
   })
 })

@@ -10,14 +10,29 @@ export interface Client {
   created_at: string
 }
 
+export interface DrlFunction {
+  id: string
+  rule_type_id: string
+  name: string
+  body: string
+}
+
+export interface DrlImport {
+  id: string
+  rule_type_id: string
+  statement: string
+  kind: 'import' | 'global'
+  is_shared: boolean
+}
+
 export interface RuleType {
   id: string
   slug: string
   name: string
   pipeline_stage: number
   drl_package: string
-  drl_imports: string
-  drl_functions: string | null
+  functions: DrlFunction[]
+  imports: DrlImport[]
 }
 
 export interface Rule {
@@ -32,8 +47,9 @@ export interface Rule {
   condition_meta: unknown
   action_meta: unknown
   enabled: boolean
-  priority: string | null
   window: number | null
+  required_function_names: string[] | null
+  required_import_statements: string[] | null
   created_at: string
   updated_at: string
 }
@@ -47,16 +63,50 @@ export interface Deployment {
   created_at: string
 }
 
+export interface KnowledgeDocument {
+  id: string
+  client_id: string
+  category: string
+  name: string
+  description: string | null
+  filename: string
+  file_size: number
+  mime_type: string
+  uploaded_by: string | null
+  created_at: string
+}
+
+export interface CronJob {
+  id: string
+  client_id: string
+  name: string
+  description: string | null
+  filename: string
+  file_size: number
+  mime_type: string
+  uploaded_by: string | null
+  created_at: string
+}
+
+export interface KnowledgeDocFilters {
+  client_id?: string
+  category?: string
+}
+
 export interface ParsedRulePreview {
   name: string
   condition_raw: string
   action_raw: string
+  required_function_names: string[]
+  required_import_statements: string[]
 }
 
 export interface ParsedFilePreview {
   filename: string
   package: string
   rule_count: number
+  functions: { name: string; body: string }[]
+  imports: { statement: string; kind: string }[]
   rules: ParsedRulePreview[]
 }
 
@@ -68,6 +118,15 @@ export interface ImportConfirmRule {
   tool?: string
   condition_raw: string
   action_raw: string
+  required_function_names: string[]
+  required_import_statements: string[]
+}
+
+export interface ImportConfirmPayload {
+  rule_type_id: string
+  functions: { name: string; body: string }[]
+  imports: { statement: string; kind: string }[]
+  rules: ImportConfirmRule[]
 }
 
 // ── Core request helper ───────────────────────────────────────────────────
@@ -113,6 +172,30 @@ export const deleteClient = (id: string) =>
 
 export const getRuleTypes = () =>
   request<RuleType[]>('/rule-types')
+
+export const getRuleFunctions = (ruleTypeId: string) =>
+  request<DrlFunction[]>(`/rule-types/${ruleTypeId}/functions`)
+
+export const createRuleFunction = (ruleTypeId: string, body: { name: string; body: string }) =>
+  request<DrlFunction>(`/rule-types/${ruleTypeId}/functions`, { method: 'POST', body: JSON.stringify(body) })
+
+export const updateRuleFunction = (ruleTypeId: string, funcId: string, body: { name?: string; body?: string }) =>
+  request<DrlFunction>(`/rule-types/${ruleTypeId}/functions/${funcId}`, { method: 'PUT', body: JSON.stringify(body) })
+
+export const deleteRuleFunction = (ruleTypeId: string, funcId: string) =>
+  request<void>(`/rule-types/${ruleTypeId}/functions/${funcId}`, { method: 'DELETE' })
+
+export const getRuleImports = (ruleTypeId: string) =>
+  request<DrlImport[]>(`/rule-types/${ruleTypeId}/imports`)
+
+export const createRuleImport = (ruleTypeId: string, body: { statement: string; kind: string; is_shared: boolean }) =>
+  request<DrlImport>(`/rule-types/${ruleTypeId}/imports`, { method: 'POST', body: JSON.stringify(body) })
+
+export const updateRuleImport = (ruleTypeId: string, importId: string, body: { statement?: string; kind?: string; is_shared?: boolean }) =>
+  request<DrlImport>(`/rule-types/${ruleTypeId}/imports/${importId}`, { method: 'PUT', body: JSON.stringify(body) })
+
+export const deleteRuleImport = (ruleTypeId: string, importId: string) =>
+  request<void>(`/rule-types/${ruleTypeId}/imports/${importId}`, { method: 'DELETE' })
 
 // ── Rules ─────────────────────────────────────────────────────────────────
 
@@ -191,8 +274,136 @@ export const parseDrlFile = async (file: File): Promise<ParsedFilePreview> => {
   return res.json() as Promise<ParsedFilePreview>
 }
 
-export const confirmImport = (rules: ImportConfirmRule[]) =>
+export const confirmImport = (payload: ImportConfirmPayload) =>
   request<{ imported: number; rule_ids: string[] }>('/import/confirm', {
     method: 'POST',
-    body: JSON.stringify({ rules }),
+    body: JSON.stringify(payload),
   })
+
+// ── Knowledge Base ────────────────────────────────────────────────────────────
+
+export const getKnowledgeDocs = (filters: KnowledgeDocFilters = {}) => {
+  const params = new URLSearchParams()
+  if (filters.client_id) params.set('client_id', filters.client_id)
+  if (filters.category) params.set('category', filters.category)
+  const qs = params.toString()
+  return request<KnowledgeDocument[]>(`/knowledge${qs ? `?${qs}` : ''}`)
+}
+
+export const uploadKnowledgeDoc = async (params: {
+  client_id: string
+  category: string
+  name: string
+  description: string
+  file: File
+}): Promise<KnowledgeDocument> => {
+  const form = new FormData()
+  form.append('client_id', params.client_id)
+  form.append('category', params.category)
+  form.append('name', params.name)
+  form.append('description', params.description)
+  form.append('file', params.file)
+  const token = localStorage.getItem('auth_token')
+  const headers: Record<string, string> = {}
+  if (token) headers['Authorization'] = `Bearer ${token}`
+  const res = await fetch(`${BASE}/knowledge`, { method: 'POST', body: form, headers })
+  if (res.status === 401) {
+    localStorage.removeItem('auth_token')
+    localStorage.removeItem('auth_user')
+    localStorage.removeItem('auth_client_access')
+    window.location.href = '/login'
+    throw new Error('Unauthorized')
+  }
+  if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`)
+  return res.json() as Promise<KnowledgeDocument>
+}
+
+// TODO: redirect to /login on 401 (inherited gap from exportDeployment/exportRules)
+export const downloadKnowledgeDoc = (id: string): Promise<Response> => {
+  const token = localStorage.getItem('auth_token')
+  const headers: Record<string, string> = {}
+  if (token) headers['Authorization'] = `Bearer ${token}`
+  return fetch(`${BASE}/knowledge/${id}/download`, { headers })
+}
+
+export const deleteKnowledgeDoc = (id: string) =>
+  request<void>(`/knowledge/${id}`, { method: 'DELETE' })
+
+// ── Cron Jobs ─────────────────────────────────────────────────────────────────
+
+export const getCronJobs = (client_id?: string) => {
+  const params = new URLSearchParams()
+  if (client_id) params.set('client_id', client_id)
+  const qs = params.toString()
+  return request<CronJob[]>(`/cron-jobs${qs ? `?${qs}` : ''}`)
+}
+
+export const uploadCronJob = async (params: {
+  client_id: string
+  name: string
+  description: string
+  script: string
+}): Promise<CronJob> => {
+  const form = new FormData()
+  form.append('client_id', params.client_id)
+  form.append('name', params.name)
+  form.append('description', params.description)
+  form.append('script', params.script)
+  const token = localStorage.getItem('auth_token')
+  const headers: Record<string, string> = {}
+  if (token) headers['Authorization'] = `Bearer ${token}`
+  const res = await fetch(`${BASE}/cron-jobs`, { method: 'POST', body: form, headers })
+  if (res.status === 401) {
+    localStorage.removeItem('auth_token')
+    localStorage.removeItem('auth_user')
+    localStorage.removeItem('auth_client_access')
+    window.location.href = '/login'
+    throw new Error('Unauthorized')
+  }
+  if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`)
+  return res.json() as Promise<CronJob>
+}
+
+// TODO: redirect to /login on 401 (inherited gap from exportDeployment/exportRules)
+export const downloadCronJob = (id: string): Promise<Response> => {
+  const token = localStorage.getItem('auth_token')
+  const headers: Record<string, string> = {}
+  if (token) headers['Authorization'] = `Bearer ${token}`
+  return fetch(`${BASE}/cron-jobs/${id}/download`, { headers })
+}
+
+export const deleteCronJob = (id: string) =>
+  request<void>(`/cron-jobs/${id}`, { method: 'DELETE' })
+
+// ── Access Requests ───────────────────────────────────────────────────────────
+
+export interface AccessRequest {
+  id: string
+  user_id: string
+  username: string
+  client_id: string
+  client_name: string
+  client_code: string
+  status: 'pending' | 'approved' | 'denied'
+  requested_at: string
+  reviewed_at: string | null
+  reviewed_by_username: string | null
+}
+
+export const requestClientAccess = (clientId: string) =>
+  request<AccessRequest>(`/clients/${clientId}/request-access`, { method: 'POST' })
+
+export const getMyAccessRequests = () =>
+  request<AccessRequest[]>('/access-requests/me')
+
+export const getAdminAccessRequests = (reqStatus = 'pending') =>
+  request<AccessRequest[]>(`/admin/access-requests?status=${reqStatus}`)
+
+export const approveAccessRequest = (requestId: string) =>
+  request<void>(`/admin/access-requests/${requestId}/approve`, { method: 'POST' })
+
+export const denyAccessRequest = (requestId: string) =>
+  request<void>(`/admin/access-requests/${requestId}/deny`, { method: 'POST' })
+
+export const setUserRole = (userId: string, role: 'admin' | 'contributor') =>
+  request<void>(`/admin/users/${userId}/role`, { method: 'PATCH', body: JSON.stringify({ role }) })

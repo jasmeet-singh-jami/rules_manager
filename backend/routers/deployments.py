@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from database import get_db
-from models import Deployment, DeploymentRuleSnapshot, Rule, RuleType, Client, User
+from models import Deployment, DeploymentRuleSnapshot, DrlFunction, DrlImport, Rule, RuleType, Client, User
 from schemas import DeploymentCreate, DeploymentOut
 from services.drl_generator import generate_drl_bundle
 from auth_deps import get_current_user, check_client_access
@@ -24,20 +24,21 @@ def _rule_to_dict(rule: Rule) -> dict:
         "condition_meta": rule.condition_meta,
         "action_meta": rule.action_meta,
         "enabled": rule.enabled,
-        "priority": rule.priority,
         "window": rule.window,
+        "required_function_names": rule.required_function_names or [],
+        "required_import_statements": rule.required_import_statements or [],
     }
 
 
-def _rt_to_dict(rt: RuleType) -> dict:
+def _rt_to_dict(rt: RuleType, funcs: list, imps: list) -> dict:
     return {
         "id": str(rt.id),
         "slug": rt.slug,
         "name": rt.name,
         "pipeline_stage": rt.pipeline_stage,
         "drl_package": rt.drl_package,
-        "drl_imports": rt.drl_imports,
-        "drl_functions": rt.drl_functions,
+        "functions": [{"name": f.name, "body": f.body} for f in funcs],
+        "imports": [{"statement": i.statement, "kind": i.kind, "is_shared": i.is_shared} for i in imps],
     }
 
 
@@ -77,7 +78,12 @@ async def create_deployment(
 
     rt_result = await db.execute(select(RuleType).order_by(RuleType.pipeline_stage))
     all_rts = rt_result.scalars().all()
-    rt_map = {str(rt.id): _rt_to_dict(rt) for rt in all_rts}
+
+    rt_map: dict[str, dict] = {}
+    for rt in all_rts:
+        funcs_result = await db.execute(select(DrlFunction).where(DrlFunction.rule_type_id == rt.id))
+        imps_result = await db.execute(select(DrlImport).where(DrlImport.rule_type_id == rt.id))
+        rt_map[str(rt.id)] = _rt_to_dict(rt, funcs_result.scalars().all(), imps_result.scalars().all())
 
     rules_result = await db.execute(
         select(Rule).where(Rule.client_id == body.client_id, Rule.enabled == True)
@@ -140,7 +146,6 @@ async def export_deployment(
     snapshots = snap_result.scalars().all()
 
     rt_rules: dict[str, tuple[dict, list[dict]]] = {}
-
     for snap in snapshots:
         rule_dict = snap.rule_snapshot
         rt_snapshot = snap.rule_type_snapshot
@@ -153,6 +158,8 @@ async def export_deployment(
             "name": rule_dict["name"],
             "condition_raw": rule_dict.get("condition_raw") or "",
             "action_raw": rule_dict.get("action_raw") or "",
+            "required_function_names": rule_dict.get("required_function_names") or [],
+            "required_import_statements": rule_dict.get("required_import_statements") or [],
         })
 
     for rt_snapshot in (dep.rule_types_snapshot or []):
@@ -165,7 +172,12 @@ async def export_deployment(
         key=lambda x: x[0]["pipeline_stage"],
     )
 
-    zip_bytes = generate_drl_bundle(sorted_pairs)
+    entries = [
+        (rt_dict, rt_dict.get("functions", []), rt_dict.get("imports", []), rules)
+        for rt_dict, rules in sorted_pairs
+    ]
+
+    zip_bytes = generate_drl_bundle(entries)
     filename = f"deployment_{dep.version}.zip"
     return Response(
         content=zip_bytes,

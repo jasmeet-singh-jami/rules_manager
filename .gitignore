@@ -6,3 +6,4 @@ backend/venv/
 *.egg-info/
 .coverage
 .env
+backend/uploads/

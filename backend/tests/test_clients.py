@@ -79,12 +79,58 @@ async def test_contributor_cannot_edit_unassigned_client(client, authed_client):
 
 
 @pytest.mark.asyncio
-async def test_contributor_cannot_create_client(client):
+async def test_contributor_can_create_client_and_receives_access(client):
     reg = await client.post("/api/auth/register", json={"username": "contrib_create", "password": "pw"})
     contrib_token = reg.json()["token"]
     response = await client.post(
         "/api/clients",
-        json={"code": "NOPE", "name": "Should Fail"},
+        json={"code": "OWN", "name": "Owned Client"},
         headers={"Authorization": f"Bearer {contrib_token}"},
     )
-    assert response.status_code == 403
+    assert response.status_code == 201
+
+    created = response.json()
+    assert created["code"] == "OWN"
+
+    listed = await client.get(
+        "/api/clients",
+        headers={"Authorization": f"Bearer {contrib_token}"},
+    )
+    assert listed.status_code == 200
+    assert created["id"] in [c["id"] for c in listed.json()]
+
+
+@pytest.mark.asyncio
+async def test_contributor_lists_all_clients_but_only_edits_assigned_ones(client, authed_client):
+    admin_client = await authed_client.post("/api/clients", json={"code": "ADMIN", "name": "Admin Client"})
+    reg = await client.post("/api/auth/register", json={"username": "contrib_list", "password": "pw"})
+    contrib_token = reg.json()["token"]
+    owned_client = await client.post(
+        "/api/clients",
+        json={"code": "SELF", "name": "Self Client"},
+        headers={"Authorization": f"Bearer {contrib_token}"},
+    )
+
+    listed = await client.get(
+        "/api/clients",
+        headers={"Authorization": f"Bearer {contrib_token}"},
+    )
+    assert listed.status_code == 200
+    listed_ids = {c["id"] for c in listed.json()}
+    assert admin_client.json()["id"] in listed_ids
+    assert owned_client.json()["id"] in listed_ids
+
+
+@pytest.mark.asyncio
+async def test_contributor_can_view_unassigned_client_details(client, authed_client):
+    created = await authed_client.post("/api/clients", json={"code": "VIEW", "name": "View Client"})
+    reg = await client.post("/api/auth/register", json={"username": "contrib_view", "password": "pw"})
+    contrib_token = reg.json()["token"]
+
+    response = await client.get(
+        f"/api/clients/{created.json()['id']}",
+        headers={"Authorization": f"Bearer {contrib_token}"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["id"] == created.json()["id"]

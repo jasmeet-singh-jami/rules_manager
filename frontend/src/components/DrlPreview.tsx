@@ -1,43 +1,57 @@
-interface Props {
-  ruleName: string
-  conditionRaw: string
-  actionRaw: string
-  ruleTypeName?: string
+import { useMemo } from 'react'
+import { Icon } from './Icon'
+import { useToast } from './Toast'
+import { tokenize, type Token } from './DrlPreview/highlight'
+
+interface DrlPreviewProps {
+  text: string
+  filename?: string
+  showCopy?: boolean
 }
 
-export function DrlPreview({ ruleName, conditionRaw, actionRaw, ruleTypeName }: Props) {
-  const preview = [
-    `// ${ruleTypeName ?? 'rule type'}`,
-    `rule "${ruleName || 'RuleName'}"`,
-    '\twhen',
-    ...(conditionRaw.trim() ? conditionRaw.split('\n').map(l => `\t\t${l}`) : ['\t\t// condition here']),
-    '\tthen',
-    ...(actionRaw.trim() ? actionRaw.split('\n').map(l => `\t\t${l}`) : ['\t\t// action here']),
-    'end',
-  ].join('\n')
+function renderTokens(tokens: Token[]) {
+  return tokens.map((t, i) =>
+    t.kind === 'ws' || t.kind === 'sym'
+      ? <span key={i}>{t.text}</span>
+      : <span key={i} className={`tok-${t.kind}`}>{t.text}</span>
+  )
+}
+
+export function DrlPreview({ text, filename = 'rule.drl', showCopy = true }: DrlPreviewProps) {
+  const tokens = useMemo(() => tokenize(text), [text])
+  const lineCount = text.split('\n').length
+  const { toast } = useToast()
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(text)
+      toast('Copied DRL', 'ok')
+    } catch {
+      toast('Copy failed', 'warn')
+    }
+  }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column' }}>
-      <label style={{ marginBottom: 6 }}>Live DRL Preview</label>
-      <pre style={{
-        minHeight: 280,
-        maxHeight: 480,
-        background: 'linear-gradient(160deg, #0f1e3a 0%, #071020 100%)',
-        color: '#7dd3fc',
-        borderRadius: 12,
-        padding: 16,
-        margin: 0,
-        fontSize: 12,
-        lineHeight: 1.7,
-        overflow: 'auto',
-        fontFamily: "'Fira Code', 'Consolas', monospace",
-        whiteSpace: 'pre-wrap',
-        wordBreak: 'break-all',
-        border: '1px solid rgba(29,106,229,0.3)',
-        boxShadow: '0 4px 20px rgba(29,78,216,0.15)',
-      }}>
-        {preview}
-      </pre>
+    <div className="editor-side" style={{ display: 'flex', flexDirection: 'column', minHeight: 260 }}>
+      <div className="code-head">
+        <div className="code-head-title">
+          <span className="code-dots"><span /><span /><span /></span>
+          <span>{filename}</span>
+        </div>
+        {showCopy && (
+          <button className="btn icon sm ghost" title="Copy DRL" onClick={copy}>
+            <Icon name="copy" />
+          </button>
+        )}
+      </div>
+      <div className="code-body">
+        <pre className="code-pre">
+          <span className="code-ln">
+            {Array.from({ length: lineCount }, (_, i) => (i + 1) + '\n')}
+          </span>
+          <code className="code-src">{renderTokens(tokens)}</code>
+        </pre>
+      </div>
     </div>
   )
 }

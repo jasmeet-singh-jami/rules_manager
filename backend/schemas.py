@@ -2,7 +2,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Optional
 from uuid import UUID
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator
 
 
 # ── Clients ──────────────────────────────────────────────────────────────────
@@ -11,6 +11,13 @@ class ClientCreate(BaseModel):
     code: str
     name: str
     description: Optional[str] = None
+
+    @field_validator('code', 'name')
+    @classmethod
+    def not_empty(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError('must not be empty')
+        return v
 
 
 class ClientUpdate(BaseModel):
@@ -28,6 +35,47 @@ class ClientOut(BaseModel):
     created_at: datetime
 
 
+# ── DRL Functions & Imports ───────────────────────────────────────────────────
+
+class DrlFunctionOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: UUID
+    rule_type_id: UUID
+    name: str
+    body: str
+
+
+class DrlFunctionCreate(BaseModel):
+    name: str
+    body: str
+
+
+class DrlFunctionUpdate(BaseModel):
+    name: Optional[str] = None
+    body: Optional[str] = None
+
+
+class DrlImportOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: UUID
+    rule_type_id: UUID
+    statement: str
+    kind: str
+    is_shared: bool
+
+
+class DrlImportCreate(BaseModel):
+    statement: str
+    kind: str = "import"
+    is_shared: bool = False
+
+
+class DrlImportUpdate(BaseModel):
+    statement: Optional[str] = None
+    kind: Optional[str] = None
+    is_shared: Optional[bool] = None
+
+
 # ── Rule Types ────────────────────────────────────────────────────────────────
 
 class RuleTypeOut(BaseModel):
@@ -38,8 +86,8 @@ class RuleTypeOut(BaseModel):
     name: str
     pipeline_stage: int
     drl_package: str
-    drl_imports: str
-    drl_functions: Optional[str]
+    functions: list[DrlFunctionOut] = []
+    imports: list[DrlImportOut] = []
 
 
 # ── Rules ─────────────────────────────────────────────────────────────────────
@@ -55,8 +103,14 @@ class RuleCreate(BaseModel):
     condition_meta: Optional[Any] = None
     action_meta: Optional[Any] = None
     enabled: bool = True
-    priority: Optional[str] = None
     window: Optional[int] = None
+
+    @field_validator('name')
+    @classmethod
+    def name_not_empty(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError('name must not be empty')
+        return v
 
 
 class RuleUpdate(BaseModel):
@@ -68,7 +122,6 @@ class RuleUpdate(BaseModel):
     condition_meta: Optional[Any] = None
     action_meta: Optional[Any] = None
     enabled: Optional[bool] = None
-    priority: Optional[str] = None
     window: Optional[int] = None
 
 
@@ -86,8 +139,9 @@ class RuleOut(BaseModel):
     condition_meta: Optional[Any]
     action_meta: Optional[Any]
     enabled: bool
-    priority: Optional[str]
     window: Optional[int]
+    required_function_names: Optional[list[str]] = None
+    required_import_statements: Optional[list[str]] = None
     created_at: datetime
     updated_at: datetime
 
@@ -125,13 +179,27 @@ class ParsedRulePreview(BaseModel):
     name: str
     condition_raw: str
     action_raw: str
+    required_function_names: list[str] = []
+    required_import_statements: list[str] = []
 
 
 class ParsedFilePreview(BaseModel):
     filename: str
     package: str
     rule_count: int
+    functions: list[dict] = []
+    imports: list[dict] = []
     rules: list[ParsedRulePreview]
+
+
+class DrlFunctionImport(BaseModel):
+    name: str
+    body: str
+
+
+class DrlImportImport(BaseModel):
+    statement: str
+    kind: str = "import"
 
 
 class ImportConfirmRule(BaseModel):
@@ -142,9 +210,14 @@ class ImportConfirmRule(BaseModel):
     tool: Optional[str] = None
     condition_raw: str
     action_raw: str
+    required_function_names: list[str] = []
+    required_import_statements: list[str] = []
 
 
 class ImportConfirmRequest(BaseModel):
+    rule_type_id: UUID
+    functions: list[DrlFunctionImport] = []
+    imports: list[DrlImportImport] = []
     rules: list[ImportConfirmRule]
 
 
@@ -198,3 +271,53 @@ class ChangePasswordRequest(BaseModel):
 
 class AdminResetPasswordRequest(BaseModel):
     new_password: str
+
+
+class UserRoleUpdate(BaseModel):
+    role: str
+
+
+class AccessRequestOut(BaseModel):
+    id: UUID
+    user_id: UUID
+    username: str
+    client_id: UUID
+    client_name: str
+    client_code: str
+    status: str
+    requested_at: datetime
+    reviewed_at: Optional[datetime] = None
+    reviewed_by_username: Optional[str] = None
+
+
+# ── Knowledge Base ────────────────────────────────────────────────────────────
+
+class KnowledgeDocumentOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    client_id: UUID
+    category: str
+    name: str
+    description: Optional[str]
+    filename: str
+    file_size: int
+    mime_type: str
+    uploaded_by: Optional[UUID]
+    created_at: datetime
+
+
+# ── Cron Jobs ─────────────────────────────────────────────────────────────────
+
+class CronJobOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    client_id: UUID
+    name: str
+    description: Optional[str]
+    filename: str
+    file_size: int
+    mime_type: str
+    uploaded_by: Optional[UUID]
+    created_at: datetime

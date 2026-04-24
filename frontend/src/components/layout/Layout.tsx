@@ -1,44 +1,44 @@
-import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { useAuth } from '../../context/AuthContext'
-import { logout as apiLogout } from '../../api/auth'
+import { useEffect, useState, type ReactNode } from 'react'
+import { Sidebar } from './Sidebar'
+import { Topbar } from './Topbar'
+import { ToastProvider } from '../Toast'
+import { CommandPalette } from '../CommandPalette/CommandPalette'
 
-interface Props { children: React.ReactNode }
+interface LayoutProps {
+  children: ReactNode
+}
 
-export function Layout({ children }: Props) {
-  const { pathname } = useLocation()
-  const { user, isAdmin, logout } = useAuth()
-  const navigate = useNavigate()
+export function Layout({ children }: LayoutProps) {
+  const [paletteOpen, setPaletteOpen] = useState(false)
 
-  async function handleLogout() {
-    try { await apiLogout() } catch { /* ignore errors */ }
-    logout()
-    navigate('/login')
-  }
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault(); setPaletteOpen(o => !o)
+      } else if (e.key === 'Escape' && paletteOpen) {
+        setPaletteOpen(false)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [paletteOpen])
 
-  const isActive = (path: string) =>
-    path === '/' ? pathname === '/' : pathname.startsWith(path)
+  useEffect(() => {
+    const onOpen = () => setPaletteOpen(true)
+    window.addEventListener('polycloud:open-palette', onOpen)
+    return () => window.removeEventListener('polycloud:open-palette', onOpen)
+  }, [])
 
   return (
-    <>
-      <header className="app-header">
-        <span className="app-logo">
-          <span className="app-logo-icon">⚡</span>
-          <span className="app-logo-text">Rules Manager</span>
-        </span>
-        <nav className="app-nav">
-          <Link to="/"        className={`nav-link${isActive('/')        ? ' active' : ''}`}>Rule Library</Link>
-          <Link to="/clients" className={`nav-link${isActive('/clients') ? ' active' : ''}`}>Clients</Link>
-          <Link to="/import"  className={`nav-link${isActive('/import')  ? ' active' : ''}`}>Import DRL</Link>
-          {isAdmin && (
-            <Link to="/admin" className={`nav-link${isActive('/admin')   ? ' active' : ''}`}>Admin</Link>
-          )}
-        </nav>
-        <div className="app-header-user">
-          <Link to="/account" className="username-chip" style={{ textDecoration: 'none' }}>{user?.username}</Link>
-          <button className="btn-signout" onClick={handleLogout}>Sign out</button>
-        </div>
-      </header>
-      <main className="page-wrap">{children}</main>
-    </>
+    <ToastProvider>
+      <div className="app">
+        <Sidebar />
+        <main className="main">
+          <Topbar />
+          <div className="page-outlet">{children}</div>
+        </main>
+      </div>
+      <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
+    </ToastProvider>
   )
 }
