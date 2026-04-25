@@ -19,7 +19,8 @@ function StatCard({ label, value, icon, sub, onClick }: { label: string; value: 
 
 export function Overview() {
   const navigate = useNavigate()
-  const { selectedClientId, setSelectedClientId, clients } = useClients()
+  const { clients } = useClients()
+  const [overviewClientId, setOverviewClientId] = useState<string | null>(null)
   const [ruleTypes, setRuleTypes] = useState<RuleType[]>([])
   const [rules, setRules] = useState<Rule[]>([])
   const [deployments, setDeployments] = useState<Deployment[]>([])
@@ -28,19 +29,22 @@ export function Overview() {
 
   useEffect(() => {
     getRuleTypes().then(ruleTypeData => setRuleTypes(ruleTypeData))
-    Promise.all(clients.map(client => getDeployments(client.id).catch(() => [])))
-      .then(arrays => setDeployments(arrays.flat()))
-    getKnowledgeDocs().then(setKnowledgeDocs).catch(() => {})
-    getCronJobs().then(setCronJobs).catch(() => {})
-  }, [clients])
+  }, [])
 
   useEffect(() => {
-    if (!selectedClientId) {
-      setRules([])
-      return
+    if (overviewClientId) {
+      getRules({ client_id: overviewClientId }).then(setRules).catch(() => {})
+      getKnowledgeDocs({ client_id: overviewClientId }).then(setKnowledgeDocs).catch(() => {})
+      getCronJobs(overviewClientId).then(setCronJobs).catch(() => {})
+      getDeployments(overviewClientId).then(setDeployments).catch(() => setDeployments([]))
+    } else {
+      getRules().then(setRules).catch(() => {})
+      getKnowledgeDocs().then(setKnowledgeDocs).catch(() => {})
+      getCronJobs().then(setCronJobs).catch(() => {})
+      Promise.all(clients.map(client => getDeployments(client.id).catch(() => [])))
+        .then(arrays => setDeployments(arrays.flat()))
     }
-    getRules({ client_id: selectedClientId }).then(setRules).catch(() => {})
-  }, [selectedClientId])
+  }, [clients, overviewClientId])
 
   const activeRules = rules.filter(rule => rule.enabled).length
 
@@ -59,21 +63,26 @@ export function Overview() {
     return [...ruleItems, ...deploymentItems].sort((a, b) => b.at.localeCompare(a.at)).slice(0, 10)
   }, [rules, deployments])
 
+  const totalRulesAcrossTypes = byType.reduce((s, b) => s + b.count, 0)
+
   return (
     <div className="page">
       <div className="page-head">
         <div>
-          <h1 className="page-title">Overview</h1>
-          <div className="page-sub">Activity across clients and rule types</div>
+          <div className="page-eyebrow">Operator Console</div>
+          <h1 className="page-title">
+            Overview, <em>at a glance.</em>
+          </h1>
+          <div className="page-sub">Activity across clients, rule types, knowledge, and crons — all in one console.</div>
         </div>
         <div className="page-actions">
           <select
             className="select"
-            value={selectedClientId ?? ''}
+            value={overviewClientId ?? ''}
             aria-label="Overview client"
-            onChange={e => setSelectedClientId(e.target.value || null)}
+            onChange={e => setOverviewClientId(e.target.value || null)}
           >
-            <option value="">Choose client...</option>
+            <option value="">All clients</option>
             {clients.map(client => (
               <option key={client.id} value={client.id}>{client.code} - {client.name}</option>
             ))}
@@ -89,47 +98,60 @@ export function Overview() {
         <StatCard label="Total crons" value={cronJobs.length} icon="clock" onClick={() => navigate('/cron-jobs')} />
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 16, marginBottom: 16 }}>
-        <div className="card" style={{ padding: 0 }}>
-          <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--border)' }}>
-            <div style={{ fontSize: 13, fontWeight: 600 }}>Rules by type</div>
-            <div className="small muted">For the selected client</div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 24, marginBottom: 24 }}>
+        <div className="editorial-card">
+          <div className="editorial-card-head">
+            <div>
+              <h2 className="editorial-card-title">Rules by type</h2>
+              <div className="editorial-card-sub">{overviewClientId ? 'For the selected client' : 'Across all clients'}</div>
+            </div>
+            <div className="eyebrow" style={{ alignSelf: 'center' }}>{totalRulesAcrossTypes} total</div>
           </div>
-          <div style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {byType.length === 0 ? <span className="muted small">No rule types yet</span> :
-              byType.map(({ rt, count, pct }) => (
-                <div key={rt.id} style={{ cursor: 'pointer' }}
-                     onClick={() => navigate(`/rules/${rt.slug}`)}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between',
-                                fontSize: 12.5, marginBottom: 5 }}>
-                    <span style={{ fontWeight: 500 }}>{rt.name}</span>
-                    <span className="muted mono">{count}</span>
+          <div>
+            {byType.length === 0 ? (
+              <div className="empty"><div className="empty-title">No rule types yet</div></div>
+            ) : (
+              byType.map(({ rt, count }) => {
+                const max = Math.max(1, ...byType.map(b => b.count), 12)
+                const segments = 12
+                const filled = Math.round((count / max) * segments)
+                return (
+                  <div key={rt.id} className="type-row" onClick={() => navigate(`/rules/${rt.slug}`)}>
+                    <div>
+                      <div className="type-name">{rt.name}</div>
+                      <div className="type-meter-row">
+                        <div className="brick-meter" aria-label={`${count} rules`}>
+                          {Array.from({ length: segments }).map((_, i) => (
+                            <div key={i} className={'brick' + (i < filled ? ' on' : '')} />
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                    <div className={'type-count' + (count === 0 ? ' zero' : '')}>{count}</div>
                   </div>
-                  <div style={{ height: 6, background: 'var(--bg-sunken)',
-                                borderRadius: 4, overflow: 'hidden' }}>
-                    <div style={{ width: pct + '%', height: '100%',
-                                  background: 'var(--accent)', borderRadius: 4 }} />
-                  </div>
-                </div>
-              ))}
+                )
+              })
+            )}
           </div>
         </div>
 
-        <div className="card" style={{ padding: 0 }}>
-          <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--border)' }}>
-            <div style={{ fontSize: 13, fontWeight: 600 }}>Recent activity</div>
-            <div className="small muted">Latest rule + deployment changes</div>
+        <div className="editorial-card">
+          <div className="editorial-card-head">
+            <div>
+              <h2 className="editorial-card-title">Recent activity</h2>
+              <div className="editorial-card-sub">Latest rule + deployment changes</div>
+            </div>
           </div>
-          <div style={{ padding: '8px 0' }}>
+          <div>
             {activity.length === 0 ? <div className="empty">Nothing recent</div> :
               activity.map((item, index) => (
-                <div key={index} style={{ padding: '10px 16px', display: 'flex',
-                                          gap: 10, alignItems: 'center',
-                                          borderBottom: '1px solid var(--border)' }}>
-                  <Icon name={item.kind === 'rule' ? 'edit' : 'deploy'} size={14} />
+                <div key={index} className="feed-row">
+                  <div className="feed-icon">
+                    <Icon name={item.kind === 'rule' ? 'edit' : 'deploy'} size={14} />
+                  </div>
                   <div className="grow" style={{ minWidth: 0 }}>
-                    <div style={{ fontSize: 13 }}>{item.what}</div>
-                    <div className="small muted">{new Date(item.at).toLocaleString()}</div>
+                    <div className="feed-what truncate">{item.what}</div>
+                    <div className="feed-when">{new Date(item.at).toLocaleString()}</div>
                   </div>
                 </div>
               ))}
@@ -137,26 +159,22 @@ export function Overview() {
         </div>
       </div>
 
-      <div className="card" style={{ padding: 0 }}>
-        <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--border)',
-                      display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div className="editorial-card">
+        <div className="editorial-card-head">
           <div>
-            <div style={{ fontSize: 13, fontWeight: 600 }}>Clients</div>
-            <div className="small muted">Quick access</div>
+            <h2 className="editorial-card-title">Clients</h2>
+            <div className="editorial-card-sub">Quick access</div>
           </div>
           <button className="btn sm ghost" onClick={() => navigate('/clients')}>
             View all <Icon name="chevR" size={12} />
           </button>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))' }}>
           {clients.map(client => (
-            <div key={client.id} style={{ padding: '14px 16px',
-                                          borderRight: '1px solid var(--border)',
-                                          borderBottom: '1px solid var(--border)',
-                                          cursor: 'pointer' }}
+            <div key={client.id} className="client-tile"
                  onClick={() => navigate(`/clients/${client.id}/deployments`)}>
-              <span className="cell-id">{client.code}</span>
-              <div style={{ fontWeight: 500, marginTop: 4 }}>{client.name}</div>
+              <span className="client-code">{client.code}</span>
+              <div className="client-name">{client.name}</div>
             </div>
           ))}
         </div>

@@ -40,9 +40,9 @@ export function Topbar() {
     <div className="topbar">
       <div className="breadcrumb">
         {crumbs.map((c, i) => (
-          <span key={i}>
-            {i > 0 && <span className="sep"> · </span>}
-            <span className={i === crumbs.length - 1 ? 'current' : ''}>{c}</span>
+          <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+            {i > 0 && <span className="sep">/</span>}
+            <span className={i === crumbs.length - 1 ? 'current' : 'crumb'}>{c}</span>
           </span>
         ))}
       </div>

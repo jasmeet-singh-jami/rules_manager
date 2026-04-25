@@ -27,12 +27,46 @@ export function LoginPage() {
   }
 
   return (
-    <div className="auth-split">
-      <div className="auth-form-col">
-        <form className="card" style={{ width: 360 }} onSubmit={handleSubmit}>
-          <img src="/icon.png" alt="Polycloud" style={{ width: 48, height: 48, marginBottom: 16, borderRadius: 10 }} />
-          <h1 style={{ fontSize: 22, fontWeight: 600, margin: '0 0 4px' }}>Welcome back</h1>
-          <div className="small muted" style={{ marginBottom: 20 }}>Sign in to Rules Manager</div>
+    <div className="auth-shell">
+      <header className="auth-header">
+        <div className="brand-mark">P</div>
+        <div className="brand-meta">
+          <div className="brand-name">Polycloud</div>
+          <div className="brand-sub">Rules · Manager</div>
+        </div>
+      </header>
+
+      <main className="auth-main">
+        <section className="auth-editorial">
+          <div className="auth-eyebrow">Operator Console · 2026</div>
+          <h1 className="auth-headline">
+            Drools rules,<br />
+            <em>engineered</em> for every client.
+          </h1>
+          <p className="auth-lede">
+            Author, version, and ship Drools rule packages across every customer
+            from a single console — with knowledge, cron jobs, and deployments living
+            alongside the rules they govern.
+          </p>
+          <div className="auth-meta-list">
+            <div className="item">
+              <div className="num">06</div>
+              <div className="lbl">Rule Types</div>
+            </div>
+            <div className="item">
+              <div className="num">∞</div>
+              <div className="lbl">Clients</div>
+            </div>
+            <div className="item">
+              <div className="num">DRL</div>
+              <div className="lbl">Native Output</div>
+            </div>
+          </div>
+        </section>
+
+        <form className="auth-card" onSubmit={handleSubmit}>
+          <h1>Sign in</h1>
+          <div className="auth-sub">Use your operator credentials to continue.</div>
           <div className="field">
             <label htmlFor="username">Username</label>
             <input
@@ -44,7 +78,7 @@ export function LoginPage() {
               autoFocus
             />
           </div>
-          <div className="field" style={{ marginTop: 12 }}>
+          <div className="field">
             <label htmlFor="password">Password</label>
             <input
               id="password"
@@ -54,23 +88,20 @@ export function LoginPage() {
               required
             />
           </div>
-          {error && <div className="callout danger small" style={{ marginTop: 10 }}>{error}</div>}
-          <button type="submit" className="btn accent" style={{ width: '100%', marginTop: 16 }} disabled={loading}>
-            {loading ? 'Signing in…' : 'Sign in'}
+          {error && <div className="callout danger small" style={{ marginTop: 14 }}>{error}</div>}
+          <button type="submit" className="btn accent auth-submit" disabled={loading}>
+            {loading ? 'Signing in…' : 'Sign in →'}
           </button>
-          <div className="small muted" style={{ marginTop: 12, textAlign: 'center' }}>
-            No account? <Link to="/register">Register</Link>
+          <div className="auth-foot">
+            No account? <Link to="/register">Request access</Link>
           </div>
         </form>
-      </div>
-      <div className="auth-hero-col" style={{ background: 'linear-gradient(135deg, var(--accent), var(--accent-strong))', color: 'var(--accent-ink)' }}>
-        <div style={{ maxWidth: 380 }}>
-          <div style={{ fontSize: 13, opacity: 0.8 }}>Polycloud</div>
-          <h2 style={{ fontSize: 28, lineHeight: 1.2, margin: '6px 0 12px', fontWeight: 600 }}>
-            Drools rules for every client, in one place.
-          </h2>
-        </div>
-      </div>
+      </main>
+
+      <footer className="auth-footer">
+        <span>© Polycloud Rules Manager</span>
+        <span>v2026.04 · Operator Build</span>
+      </footer>
     </div>
   )
 }
