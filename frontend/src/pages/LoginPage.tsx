@@ -29,11 +29,7 @@ export function LoginPage() {
   return (
     <div className="auth-shell">
       <header className="auth-header">
-        <div className="brand-mark">P</div>
-        <div className="brand-meta">
-          <div className="brand-name">Polycloud</div>
-          <div className="brand-sub">Rules · Manager</div>
-        </div>
+        <img src="/logo.png" alt="Polycloud" className="brand-mark" />
       </header>
 
       <main className="auth-main">

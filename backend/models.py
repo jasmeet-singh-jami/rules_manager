@@ -96,16 +96,12 @@ class Rule(Base):
     snapshots = relationship("DeploymentRuleSnapshot", back_populates="rule")
 
 
-DeploymentStatus = SAEnum("draft", "deployed", name="deployment_status")
-
-
 class Deployment(Base):
     __tablename__ = "deployments"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     client_id = Column(UUID(as_uuid=True), ForeignKey("clients.id", ondelete="CASCADE"), nullable=False)
     version = Column(String(20), nullable=False)
-    status = Column(DeploymentStatus, nullable=False, default="draft")
     notes = Column(Text, nullable=True)
     created_at = Column(TIMESTAMP(timezone=True), default=utcnow, nullable=False)
     rule_types_snapshot = Column(JSONB, nullable=True)

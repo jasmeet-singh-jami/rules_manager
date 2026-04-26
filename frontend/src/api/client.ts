@@ -58,7 +58,6 @@ export interface Deployment {
   id: string
   client_id: string
   version: string
-  status: 'draft' | 'deployed'
   notes: string | null
   created_at: string
 }

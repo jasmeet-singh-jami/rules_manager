@@ -168,7 +168,6 @@ class DeploymentOut(BaseModel):
     id: UUID
     client_id: UUID
     version: str
-    status: str
     notes: Optional[str]
     created_at: datetime
 

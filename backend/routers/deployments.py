@@ -71,7 +71,6 @@ async def create_deployment(
         client_id=body.client_id,
         version=body.version,
         notes=body.notes,
-        status="draft",
     )
     db.add(deployment)
     await db.flush()

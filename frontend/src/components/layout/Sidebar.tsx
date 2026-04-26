@@ -76,53 +76,55 @@ export function Sidebar() {
   return (
     <aside className="sidebar">
       <div className="sidebar-brand">
-        <div className="brand-mark" aria-hidden="true">P</div>
-        <div>
-          <div className="brand-name">Polycloud</div>
-          <div className="brand-sub">Rules · Manager</div>
-        </div>
+        <img src="/logo.png" alt="Polycloud" className="brand-mark" />
       </div>
 
       <nav className="sidebar-scroll">
         <div className="sidebar-section">
           <div className="sidebar-section-label">Workspace</div>
-          {WORKSPACE.map(renderItem)}
+          {WORKSPACE.map(entry => {
+            if (entry.adminOnly && !isAdmin) return null
+            const rendered = renderItem(entry)
+            if (entry.to === '/rules' && onRulesPage) {
+              return (
+                <div key={entry.to}>
+                  {rendered}
+                  <div className="nav-sub">
+                    {ruleTypes.map(ruleType => {
+                      const isActive = location.pathname === `/rules/${ruleType.slug}` ||
+                                       location.pathname.startsWith(`/rules/${ruleType.slug}/`)
+                      return (
+                        <NavLink key={ruleType.id} to={`/rules/${ruleType.slug}`} className={() => `nav-item${isActive ? ' active' : ''}`}>
+                          <span className="grow truncate">{ruleType.name}</span>
+                          <span className="count">{countByType(ruleType.id) || ''}</span>
+                        </NavLink>
+                      )
+                    })}
+                  </div>
+                </div>
+              )
+            }
+            if (entry.to === '/knowledge' && onKnowledgePage) {
+              return (
+                <div key={entry.to}>
+                  {rendered}
+                  <div className="nav-sub">
+                    {KB_CATEGORIES.map(cat => (
+                      <NavLink
+                        key={cat.slug}
+                        to={`/knowledge/${cat.slug}`}
+                        className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
+                      >
+                        <span className="grow truncate">{cat.label}</span>
+                      </NavLink>
+                    ))}
+                  </div>
+                </div>
+              )
+            }
+            return rendered
+          })}
         </div>
-
-        {onRulesPage && (
-          <div className="sidebar-section">
-            <div className="sidebar-section-label">Rule Types</div>
-            <div className="nav-sub">
-              {ruleTypes.map(ruleType => {
-                const isActive = location.pathname === `/rules/${ruleType.slug}` ||
-                                 location.pathname.startsWith(`/rules/${ruleType.slug}/`)
-                return (
-                  <NavLink key={ruleType.id} to={`/rules/${ruleType.slug}`} className={() => `nav-item${isActive ? ' active' : ''}`}>
-                    <span className="grow truncate">{ruleType.name}</span>
-                    <span className="count">{countByType(ruleType.id) || ''}</span>
-                  </NavLink>
-                )
-              })}
-            </div>
-          </div>
-        )}
-
-        {onKnowledgePage && (
-          <div className="sidebar-section">
-            <div className="sidebar-section-label">Categories</div>
-            <div className="nav-sub">
-              {KB_CATEGORIES.map(cat => (
-                <NavLink
-                  key={cat.slug}
-                  to={`/knowledge/${cat.slug}`}
-                  className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
-                >
-                  <span className="grow truncate">{cat.label}</span>
-                </NavLink>
-              ))}
-            </div>
-          </div>
-        )}
 
         <div className="sidebar-section">
           <div className="sidebar-section-label">Settings</div>

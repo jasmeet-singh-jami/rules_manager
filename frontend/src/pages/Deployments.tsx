@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { getClients, getDeployments, createDeployment, type Client, type Deployment } from '../api/client'
+import { getClients, getDeployments, createDeployment, exportDeployment, type Client, type Deployment } from '../api/client'
 import { useAuth } from '../context/AuthContext'
 import { SkeletonRows } from '../components/Skeleton'
 import { EmptyState } from '../components/EmptyState'
@@ -21,7 +21,6 @@ export function Deployments() {
   const [rows, setRows] = useState<Row[]>([])
   const [loading, setLoading] = useState(true)
   const [q, setQ] = useState('')
-  const [statusFilter, setStatusFilter] = useState<'' | Deployment['status']>('')
   const [clientFilter, setClientFilter] = useState<string>('')
   const [showModal, setShowModal] = useState(false)
   const [form, setForm] = useState<DeployForm>({ version: '', notes: '', client_id: '' })
@@ -73,13 +72,28 @@ export function Deployments() {
   const filtered = useMemo(() => {
     const ql = q.trim().toLowerCase()
     return rows.filter(r =>
-      (!statusFilter || r.status === statusFilter) &&
       (!clientFilter || r.client_id === clientFilter) &&
       (!ql || r.version.toLowerCase().includes(ql) ||
               (r.notes ?? '').toLowerCase().includes(ql) ||
               r.client_code.toLowerCase().includes(ql))
     )
-  }, [rows, q, statusFilter, clientFilter])
+  }, [rows, q, clientFilter])
+
+  const handleDownload = async (dep: Row) => {
+    try {
+      const res = await exportDeployment(dep.id)
+      if (!res.ok) { toast('Download failed', 'error'); return }
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `deployment_${dep.version}.zip`
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch {
+      toast('Download failed', 'error')
+    }
+  }
 
   const scopedClient = clients.find(c => c.id === scopedClientId)
 
@@ -119,12 +133,6 @@ export function Deployments() {
             {clients.map(c => <option key={c.id} value={c.id}>{c.code}</option>)}
           </select>
         )}
-        <select className="select" value={statusFilter}
-                onChange={e => setStatusFilter(e.target.value as '' | Deployment['status'])}>
-          <option value="">All statuses</option>
-          <option value="draft">Draft</option>
-          <option value="deployed">Deployed</option>
-        </select>
         <div className="tb-spacer" />
         <span className="tb-meta">{filtered.length} deployments</span>
       </div>
@@ -135,9 +143,9 @@ export function Deployments() {
             <tr>
               <th className="col-id">Version</th>
               {global && <th>Client</th>}
-              <th>Status</th>
               <th>Notes</th>
               <th className="col-updated">Created</th>
+              <th />
             </tr>
           </thead>
           <tbody>
@@ -151,13 +159,13 @@ export function Deployments() {
                 <tr key={r.id}>
                   <td><span className="cell-id">{r.version}</span></td>
                   {global && <td className="cell-name">{r.client_code}</td>}
-                  <td>
-                    <span className={`badge ${r.status === 'deployed' ? 'ok' : 'warn'}`}>
-                      <span className="dot" /> {r.status}
-                    </span>
-                  </td>
                   <td className="small">{r.notes ?? <span className="muted">—</span>}</td>
                   <td><span className="muted small">{new Date(r.created_at).toLocaleString()}</span></td>
+                  <td>
+                    <button className="btn ghost icon-only" title="Download DRL bundle" onClick={() => handleDownload(r)}>
+                      <Icon name="download" />
+                    </button>
+                  </td>
                 </tr>
               ))}
           </tbody>
