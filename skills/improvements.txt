@@ -1,0 +1,30 @@
+1. Rule description needs to be added at rule table.
+2. While creating rule, user is able to save empty rule. Check for these kind of validations at other places as well.
+3. I see package name under Rule Type Name like com.infy.ceh.management.autonomics.framework.tasks.impl, what is the purpose of it? If doesn't serve any purpose, remove it.
+CREATE TABLE IF NOT EXISTS public.rule_types
+(
+    id uuid NOT NULL,
+    slug character varying(50) COLLATE pg_catalog."default" NOT NULL,
+    name character varying(100) COLLATE pg_catalog."default" NOT NULL,
+    pipeline_stage integer NOT NULL,
+    drl_package character varying(200) COLLATE pg_catalog."default" NOT NULL,
+    CONSTRAINT rule_types_pkey PRIMARY KEY (id),
+    CONSTRAINT rule_types_slug_key UNIQUE (slug)
+)
+
+4. A user should be able to see and copy all the rules from all the clients but should have access to edit and delete only the rules for the clients he has access to. 
+This basic functionality is getting overridden again and again. Fix it and build a proper test case for it. 
+Right now if i login with test user, i get 403 Forbidden error in the backend when i try to see any rules.
+5. On the left menu, i see rule count number next to Rule Type name. This number doesn't get updated automatically when i add new rules.
+6. When you click on Pick a Choose Client in Import DRL screen, first time nothing happens and if i try again the screen goes empty.
+7. I don't see any button to create the new deployments. Check and confirm the functionality is working fine.
+
+8. How to add one more rule type, Email Ingestion.
+9. Add another menu item by the name Knowledge Base below Deployments. This will be used to store any word, pdf, ppt, txt documents capturing the 
+Knowledge of different stuff aquired in that client like what are the steps to integrate with a third party tool, 
+how to fix a particular in Polycloud application etc. So, just like different types in alert rules, this will have 3 types under it:
+Integrations, Automations and Issues
+10. Add another menu item where user can upload the cron jobs that they developed for their client.
+
+11. Do not use superpowers skill, Make change to show to the dropdown in import drl page to have 
+only clients to which user has access.

@@ -7,3 +7,9 @@ backend/venv/
 .coverage
 .env
 backend/uploads/
+
+# Playwright MCP artifacts
+.playwright-mcp/
+
+# Screenshot artifacts
+*.png
