@@ -24,7 +24,18 @@ export function DrlPreview({ text, filename = 'rule.drl', showCopy = true }: Drl
 
   const copy = async () => {
     try {
-      await navigator.clipboard.writeText(text)
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text)
+      } else {
+        const ta = document.createElement('textarea')
+        ta.value = text
+        ta.style.cssText = 'position:fixed;opacity:0;pointer-events:none'
+        document.body.appendChild(ta)
+        ta.focus()
+        ta.select()
+        document.execCommand('copy')
+        document.body.removeChild(ta)
+      }
       toast('Copied DRL', 'ok')
     } catch {
       toast('Copy failed', 'warn')

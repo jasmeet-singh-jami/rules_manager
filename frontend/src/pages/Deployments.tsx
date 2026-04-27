@@ -82,7 +82,7 @@ export function Deployments() {
   const handleDownload = async (dep: Row) => {
     try {
       const res = await exportDeployment(dep.id)
-      if (!res.ok) { toast('Download failed', 'error'); return }
+      if (!res.ok) { toast('Download failed', 'danger'); return }
       const blob = await res.blob()
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
@@ -91,7 +91,7 @@ export function Deployments() {
       a.click()
       URL.revokeObjectURL(url)
     } catch {
-      toast('Download failed', 'error')
+      toast('Download failed', 'danger')
     }
   }
 

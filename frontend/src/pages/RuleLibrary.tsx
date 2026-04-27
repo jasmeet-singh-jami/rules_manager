@@ -160,7 +160,10 @@ export function RuleLibrary() {
   }
 
   const onDeleteRule = async (rule: Rule) => {
-    if (!hasEditAccess(rule.client_id)) return
+    if (!hasEditAccess(rule.client_id)) {
+      toast('You can only delete rules for clients you can edit', 'warn')
+      return
+    }
     if (!confirm(`Delete "${rule.name}"?`)) return
     try {
       await deleteRule(rule.id)
@@ -301,8 +304,6 @@ export function RuleLibrary() {
             <button
               className="btn sm danger-ghost"
               onClick={onBulkDelete}
-              disabled={selectedEditableCount !== selectedRules.length}
-              title={selectedEditableCount !== selectedRules.length ? 'Delete is only available for rules you can edit' : undefined}
             >
               <Icon name="trash" /> Delete
             </button>
@@ -416,12 +417,14 @@ export function RuleLibrary() {
                                 <Icon name="copy" />
                               </button>
                             )}
-                            {canEdit && (
-                              <button className="btn icon sm danger-ghost" title="Delete"
-                                      onClick={() => { void onDeleteRule(rule) }}>
-                                <Icon name="trash" />
-                              </button>
-                            )}
+                            <button
+                              className="btn icon sm danger-ghost"
+                              title={canEdit ? 'Delete' : 'You can only delete rules for clients you can edit'}
+                              disabled={!canEdit}
+                              onClick={() => { void onDeleteRule(rule) }}
+                            >
+                              <Icon name="trash" />
+                            </button>
                           </div>
                         </td>
                       </tr>

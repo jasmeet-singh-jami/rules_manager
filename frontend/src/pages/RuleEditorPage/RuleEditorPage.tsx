@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+
 import { useBlocker, useNavigate, useParams } from 'react-router-dom'
 import { useClients } from '../../context/ClientContext'
 import {
@@ -9,12 +10,7 @@ import { Icon } from '../../components/Icon'
 import { Switch } from '../../components/Switch'
 import { DrlPreview } from '../../components/DrlPreview'
 import { useToast } from '../../components/Toast'
-import {
-  parseCondition, stringifyCondition, CONDITION_OPS, type CondRow,
-} from './conditionParser'
-import { getActionPresets, getFieldSuggestions, getPrefix } from './presets'
-
-type CondRowKeyed = { field: string; op: string; value: string; _key: string }
+import { getActionPresets, getPrefix } from './presets'
 
 function buildDrl(rt: RuleType, rule: Partial<Rule>): string {
   const header =
@@ -76,44 +72,39 @@ export function RuleEditorPage() {
   const [existing, setExisting] = useState<Rule | null>(null)
   const [form, setForm] = useState<FormState>(emptyForm)
   const [initial, setInitial] = useState<FormState>(emptyForm)
-  const [manual, setManual] = useState(false)
-  const [condRows, setCondRows] = useState<CondRowKeyed[]>([
-    { field: '', op: '==', value: '', _key: crypto.randomUUID() },
-  ])
   const [saving, setSaving] = useState(false)
+  const [toolOptions, setToolOptions] = useState<string[]>([])
+  const [addingTool, setAddingTool] = useState(false)
+  const [newToolInput, setNewToolInput] = useState('')
 
   const rt = ruleTypes.find(ruleType => ruleType.slug === slug)
   const prefix = rt ? getPrefix(rt.slug) : ''
   const presets = rt ? getActionPresets(rt.slug) : []
-  const fieldSugg = rt ? getFieldSuggestions(rt.slug) : []
   const requiredFunctionNames = existing?.required_function_names ?? []
   const requiredImportStatements = existing?.required_import_statements ?? []
 
   useEffect(() => { getRuleTypes().then(setRuleTypes).catch(() => {}) }, [])
 
+  // Fetch rules to seed tool dropdown options
   useEffect(() => {
-    if (!id || !selectedClientId || !rt) return
+    if (!selectedClientId || !rt) return
     let cancelled = false
     getRules({ client_id: selectedClientId, rule_type: rt.slug }).then(rules => {
       if (cancelled) return
-      const found = rules.find(rule => rule.id === id) ?? null
-      setExisting(found)
-      if (found) {
-        const nextForm = formFromRule(found)
-        setForm(nextForm)
-        setInitial(nextForm)
-        setCondRows(parseCondition(found.condition_raw ?? '', prefix)
-          .map(row => ({ ...row, _key: crypto.randomUUID() })))
-        setManual(false)
+      const tools = Array.from(new Set(rules.map(r => r.tool).filter((t): t is string => !!t)))
+      setToolOptions(tools)
+      if (id) {
+        const found = rules.find(rule => rule.id === id) ?? null
+        setExisting(found)
+        if (found) {
+          const nextForm = formFromRule(found)
+          setForm(nextForm)
+          setInitial(nextForm)
+        }
       }
     })
     return () => { cancelled = true }
   }, [id, rt?.slug, selectedClientId, prefix])
-
-  useEffect(() => {
-    if (manual) return
-    setForm(current => ({ ...current, condition_raw: stringifyCondition(condRows as CondRow[], prefix) }))
-  }, [condRows, manual, prefix])
 
   const drlText = useMemo(() => rt ? buildDrl(rt, form) : '', [rt, form])
   const isDirty = JSON.stringify(form) !== JSON.stringify(initial)
@@ -239,7 +230,53 @@ export function RuleEditorPage() {
               </div>
               <div className="field">
                 <label>Tool</label>
-                <input type="text" value={form.tool} onChange={e => update({ tool: e.target.value })} />
+                {addingTool ? (
+                  <div className="hstack" style={{ gap: 6 }}>
+                    <input
+                      autoFocus
+                      type="text"
+                      value={newToolInput}
+                      placeholder="New tool name"
+                      onChange={e => setNewToolInput(e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter' && newToolInput.trim()) {
+                          const t = newToolInput.trim()
+                          setToolOptions(prev => prev.includes(t) ? prev : [...prev, t])
+                          update({ tool: t })
+                          setNewToolInput('')
+                          setAddingTool(false)
+                        } else if (e.key === 'Escape') {
+                          setNewToolInput('')
+                          setAddingTool(false)
+                        }
+                      }}
+                    />
+                    <button className="btn sm accent" onClick={() => {
+                      const t = newToolInput.trim()
+                      if (t) {
+                        setToolOptions(prev => prev.includes(t) ? prev : [...prev, t])
+                        update({ tool: t })
+                      }
+                      setNewToolInput('')
+                      setAddingTool(false)
+                    }}>Add</button>
+                    <button className="btn sm ghost" onClick={() => { setNewToolInput(''); setAddingTool(false) }}>Cancel</button>
+                  </div>
+                ) : (
+                  <div className="hstack" style={{ gap: 6 }}>
+                    <select
+                      value={form.tool}
+                      onChange={e => update({ tool: e.target.value })}
+                      style={{ flex: 1 }}
+                    >
+                      <option value="">— none —</option>
+                      {toolOptions.map(t => <option key={t} value={t}>{t}</option>)}
+                    </select>
+                    <button className="btn sm ghost" onClick={() => setAddingTool(true)} title="Add new tool">
+                      <Icon name="plus" />
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
             <div style={{ height: 12 }} />
@@ -261,77 +298,20 @@ export function RuleEditorPage() {
                   {prefix && <span className="badge accent mono" style={{ marginLeft: 8 }}>{prefix}.*</span>}
                 </div>
                 <div className="editor-section-desc">
-                  Joined with <span className="mono">&&</span>.
-                  {prefix ? ` Prefix ${prefix}. applied automatically.` : ' No prefix.'}
+                  Write raw DRL condition. Join multiple clauses with <span className="mono">&&</span>.
+                  {prefix && <> Prefix: <span className="mono">{prefix}.</span></>}
                 </div>
-              </div>
-              <div className="hstack">
-                <label className="small muted hstack">
-                  <input type="checkbox" className="cbx" checked={manual}
-                         onChange={e => setManual(e.target.checked)} />
-                  Manual DRL
-                </label>
-                {!manual && (
-                  <button className="btn sm" onClick={() => setCondRows(rows => [
-                    ...rows,
-                    { field: '', op: '==', value: '', _key: crypto.randomUUID() },
-                  ])}>
-                    <Icon name="plus" /> Add
-                  </button>
-                )}
               </div>
             </div>
 
-            {manual ? (
-              <div className="field">
-                <textarea
-                  value={form.condition_raw}
-                  onChange={e => update({ condition_raw: e.target.value })}
-                  placeholder='e.g. sourceId == "LogicMonitor" && severity > 3'
-                />
-              </div>
-            ) : (
-              <div className="builder">
-                {condRows.map((row, index) => (
-                  <div key={row._key}>
-                    <div className="kv-row">
-                      <input
-                        list="cond-fields"
-                        value={row.field}
-                        placeholder="field"
-                        onChange={e => setCondRows(rows => rows.map((current, currentIndex) => (
-                          currentIndex === index ? { ...current, field: e.target.value } : current
-                        )))}
-                      />
-                      <select
-                        value={row.op}
-                        onChange={e => setCondRows(rows => rows.map((current, currentIndex) => (
-                          currentIndex === index ? { ...current, op: e.target.value } : current
-                        )))}
-                      >
-                        {CONDITION_OPS.map(op => <option key={op} value={op}>{op}</option>)}
-                      </select>
-                      <input
-                        className="mono"
-                        value={row.value}
-                        placeholder="value"
-                        onChange={e => setCondRows(rows => rows.map((current, currentIndex) => (
-                          currentIndex === index ? { ...current, value: e.target.value } : current
-                        )))}
-                      />
-                      <button className="kv-del" title="Remove"
-                              onClick={() => setCondRows(rows => rows.filter((_, currentIndex) => currentIndex !== index))}>
-                        <Icon name="x" size={14} />
-                      </button>
-                    </div>
-                    {index < condRows.length - 1 && <div className="kv-joiner">AND</div>}
-                  </div>
-                ))}
-                <datalist id="cond-fields">
-                  {fieldSugg.map(field => <option key={field} value={field} />)}
-                </datalist>
-              </div>
-            )}
+            <div className="field">
+              <textarea
+                value={form.condition_raw}
+                onChange={e => update({ condition_raw: e.target.value })}
+                placeholder='e.g. sourceId == "LogicMonitor" && severity > 3'
+                style={{ minHeight: 140 }}
+              />
+            </div>
           </div>
 
           <div className="editor-section">

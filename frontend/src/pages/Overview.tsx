@@ -59,7 +59,7 @@ export function Overview() {
 
   const activity = useMemo(() => {
     const ruleItems = rules.map(rule => ({ kind: 'rule' as const, at: rule.updated_at, what: rule.name }))
-    const deploymentItems = deployments.map(deployment => ({ kind: 'deploy' as const, at: deployment.created_at, what: `v${deployment.version} · ${deployment.status}` }))
+    const deploymentItems = deployments.map(deployment => ({ kind: 'deploy' as const, at: deployment.created_at, what: `v${deployment.version}` }))
     return [...ruleItems, ...deploymentItems].sort((a, b) => b.at.localeCompare(a.at)).slice(0, 10)
   }, [rules, deployments])
 
