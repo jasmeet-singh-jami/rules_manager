@@ -11,5 +11,6 @@ backend/uploads/
 # Playwright MCP artifacts
 .playwright-mcp/
 
-# Screenshot artifacts
+# Screenshot artifacts (exclude intentionally tracked assets)
 *.png
+!frontend/dist/logo.png
