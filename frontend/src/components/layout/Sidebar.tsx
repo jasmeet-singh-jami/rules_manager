@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { useClients } from '../../context/ClientContext'
-import { getRuleTypes, getRules, type RuleType, type Rule } from '../../api/client'
+import { getRuleTypes, getRules, getKbCategories, getScriptCategories, type RuleType, type Rule, type KbCategory, type ScriptCategory } from '../../api/client'
 import { Icon } from '../Icon'
 import type { IconName } from '../Icon'
 
@@ -18,7 +18,7 @@ const WORKSPACE: NavEntry[] = [
   { to: '/rules', icon: 'rules', label: 'Rules' },
   { to: '/deployments', icon: 'deploy', label: 'Deployments' },
   { to: '/knowledge', icon: 'folder', label: 'Knowledge Base' },
-  { to: '/cron-jobs', icon: 'clock', label: 'Cron Jobs' },
+  { to: '/scripts', icon: 'clock', label: 'Scripts' },
   { to: '/clients', icon: 'clients', label: 'Clients' },
   { to: '/import', icon: 'import', label: 'Import DRL' },
 ]
@@ -28,11 +28,7 @@ const SETTINGS: NavEntry[] = [
   { to: '/account', icon: 'settings', label: 'Account' },
 ]
 
-const KB_CATEGORIES = [
-  { slug: 'integrations', label: 'Integrations' },
-  { slug: 'automations', label: 'Automations' },
-  { slug: 'issues', label: 'Issues' },
-]
+
 
 export function Sidebar() {
   const { user, isAdmin } = useAuth()
@@ -42,13 +38,18 @@ export function Sidebar() {
     return user.role === 'admin' ? 'Administrator' : 'Contributor'
   }, [user?.role])
   const location = useLocation()
-  const { selectedClientId, rulesVersion } = useClients()
+  const { selectedClientId, rulesVersion, categoriesVersion } = useClients()
   const [ruleTypes, setRuleTypes] = useState<RuleType[]>([])
+  const [kbCategories, setKbCategories] = useState<KbCategory[]>([])
+  const [scriptCategories, setScriptCategories] = useState<ScriptCategory[]>([])
   const [rulesForClient, setRulesForClient] = useState<Rule[]>([])
   const onRulesPage = location.pathname.startsWith('/rules')
   const onKnowledgePage = location.pathname.startsWith('/knowledge')
+  const onScriptsPage = location.pathname.startsWith('/scripts')
 
-  useEffect(() => { getRuleTypes().then(setRuleTypes).catch(() => {}) }, [])
+  useEffect(() => { getRuleTypes().then(setRuleTypes).catch(() => {}) }, [categoriesVersion])
+  useEffect(() => { getKbCategories().then(setKbCategories).catch(() => {}) }, [categoriesVersion])
+  useEffect(() => { getScriptCategories().then(setScriptCategories).catch(() => {}) }, [categoriesVersion])
   useEffect(() => {
     if (!selectedClientId) {
       setRulesForClient([])
@@ -109,13 +110,31 @@ export function Sidebar() {
                 <div key={entry.to}>
                   {rendered}
                   <div className="nav-sub">
-                    {KB_CATEGORIES.map(cat => (
+                    {kbCategories.map(cat => (
                       <NavLink
                         key={cat.slug}
                         to={`/knowledge/${cat.slug}`}
                         className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
                       >
-                        <span className="grow truncate">{cat.label}</span>
+                        <span className="grow truncate">{cat.name}</span>
+                      </NavLink>
+                    ))}
+                  </div>
+                </div>
+              )
+            }
+            if (entry.to === '/scripts' && onScriptsPage) {
+              return (
+                <div key={entry.to}>
+                  {rendered}
+                  <div className="nav-sub">
+                    {scriptCategories.map(cat => (
+                      <NavLink
+                        key={cat.slug}
+                        to={`/scripts/${cat.slug}`}
+                        className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
+                      >
+                        <span className="grow truncate">{cat.name}</span>
                       </NavLink>
                     ))}
                   </div>

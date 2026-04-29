@@ -8,6 +8,8 @@ import {
 import { Icon } from '../components/Icon'
 import { useToast } from '../components/Toast'
 import { FunctionsPanel } from '../components/FunctionsPanel/FunctionsPanel'
+import { KbCategoriesPanel, ScriptCategoriesPanel, RuleTypesPanel } from '../components/SubcategoriesPanel/SubcategoriesPanel'
+import { useClients } from '../context/ClientContext'
 import { PasswordStrength, scorePassword } from './Admin/PasswordStrength'
 
 interface AdminUser {
@@ -53,6 +55,7 @@ async function resetPassword(userId: string, token: string, newPw: string): Prom
 export function AdminPage() {
   const { toast } = useToast()
   const { token: authToken, user: currentUser } = useAuth()
+  const { categoriesVersion } = useClients()
   const token = authToken ?? ''
 
   const [users, setUsers] = useState<AdminUser[]>([])
@@ -61,6 +64,7 @@ export function AdminPage() {
   const [resetFor, setResetFor] = useState<AdminUser | null>(null)
   const [newPw, setNewPw] = useState('')
   const [expandedRuleTypeId, setExpandedRuleTypeId] = useState<string | null>(null)
+  const [expandedSubcategory, setExpandedSubcategory] = useState<'kb' | 'scripts' | 'ruleTypes' | null>(null)
   const [accessRequests, setAccessRequests] = useState<AccessRequest[]>([])
   const [reviewingId, setReviewingId] = useState<string | null>(null)
   const [changingRoleFor, setChangingRoleFor] = useState<string | null>(null)
@@ -68,9 +72,12 @@ export function AdminPage() {
   useEffect(() => {
     listUsers(token).then(setUsers).catch(() => toast('Failed to load users', 'danger'))
     getClients().then(setClients).catch(() => {})
-    getRuleTypes().then(setRuleTypes).catch(() => toast('Failed to load rule types', 'danger'))
     getAdminAccessRequests('pending').then(setAccessRequests).catch(() => {})
   }, [token, toast])
+
+  useEffect(() => {
+    getRuleTypes().then(setRuleTypes).catch(() => toast('Failed to load rule types', 'danger'))
+  }, [toast, categoriesVersion])
 
   const onToggleAccess = async (user: AdminUser, clientId: string, grant: boolean) => {
     try {
@@ -277,6 +284,60 @@ export function AdminPage() {
               ))}
             </tbody>
           </table>
+        </div>
+      </div>
+
+      <div className="card" style={{ padding: 0, marginTop: 16 }}>
+        <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--border)',
+                      fontSize: 13, fontWeight: 600 }}>Sidebar Subcategories</div>
+        <div style={{ padding: 16 }}>
+          <div style={{ display: 'grid', gap: 12 }}>
+            <div className="card" style={{ padding: 0 }}>
+              <button
+                className="btn ghost"
+                onClick={() => setExpandedSubcategory(c => c === 'kb' ? null : 'kb')}
+                style={{ width: '100%', justifyContent: 'space-between', padding: '14px 16px', borderRadius: 0 }}
+              >
+                <span>Knowledge Base categories</span>
+                <Icon name={expandedSubcategory === 'kb' ? 'arrowUp' : 'arrowDown'} />
+              </button>
+              {expandedSubcategory === 'kb' && (
+                <div style={{ borderTop: '1px solid var(--border)' }}>
+                  <KbCategoriesPanel />
+                </div>
+              )}
+            </div>
+            <div className="card" style={{ padding: 0 }}>
+              <button
+                className="btn ghost"
+                onClick={() => setExpandedSubcategory(c => c === 'scripts' ? null : 'scripts')}
+                style={{ width: '100%', justifyContent: 'space-between', padding: '14px 16px', borderRadius: 0 }}
+              >
+                <span>Script categories</span>
+                <Icon name={expandedSubcategory === 'scripts' ? 'arrowUp' : 'arrowDown'} />
+              </button>
+              {expandedSubcategory === 'scripts' && (
+                <div style={{ borderTop: '1px solid var(--border)' }}>
+                  <ScriptCategoriesPanel />
+                </div>
+              )}
+            </div>
+            <div className="card" style={{ padding: 0 }}>
+              <button
+                className="btn ghost"
+                onClick={() => setExpandedSubcategory(c => c === 'ruleTypes' ? null : 'ruleTypes')}
+                style={{ width: '100%', justifyContent: 'space-between', padding: '14px 16px', borderRadius: 0 }}
+              >
+                <span>Rule types</span>
+                <Icon name={expandedSubcategory === 'ruleTypes' ? 'arrowUp' : 'arrowDown'} />
+              </button>
+              {expandedSubcategory === 'ruleTypes' && (
+                <div style={{ borderTop: '1px solid var(--border)' }}>
+                  <RuleTypesPanel />
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 

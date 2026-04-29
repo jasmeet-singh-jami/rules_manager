@@ -40,6 +40,11 @@ class RuleType(Base):
     functions = relationship("DrlFunction", back_populates="rule_type", cascade="all, delete-orphan", lazy="selectin")
     imports = relationship("DrlImport", back_populates="rule_type", cascade="all, delete-orphan", lazy="selectin")
 
+    @property
+    def is_system_locked(self) -> bool:
+        from seed_data import SEEDED_RULE_TYPE_SLUGS
+        return self.slug in SEEDED_RULE_TYPE_SLUGS
+
 
 DrlImportKind = SAEnum("import", "global", name="drl_import_kind")
 
@@ -190,7 +195,13 @@ class ClientAccessRequest(Base):
     reviewed_by = relationship("User", foreign_keys=[reviewed_by_id])
 
 
-KbCategory = SAEnum("integrations", "automations", "issues", name="kb_category")
+class KbCategory(Base):
+    __tablename__ = "kb_categories"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    slug = Column(String(50), unique=True, nullable=False)
+    name = Column(String(100), nullable=False)
+    sort_order = Column(Integer, nullable=False, default=0)
 
 
 class KnowledgeDocument(Base):
@@ -198,7 +209,7 @@ class KnowledgeDocument(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     client_id = Column(UUID(as_uuid=True), ForeignKey("clients.id", ondelete="CASCADE"), nullable=False)
-    category = Column(KbCategory, nullable=False)
+    kb_category_id = Column(UUID(as_uuid=True), ForeignKey("kb_categories.id", ondelete="SET NULL"), nullable=True)
     name = Column(String(150), nullable=False)
     description = Column(Text, nullable=True)
     filename = Column(String(255), nullable=False)
@@ -209,6 +220,18 @@ class KnowledgeDocument(Base):
     created_at = Column(TIMESTAMP(timezone=True), default=utcnow, nullable=False)
 
     client = relationship("Client", viewonly=True)
+    kb_category = relationship("KbCategory", lazy="joined")
+
+
+class ScriptCategory(Base):
+    __tablename__ = "script_categories"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    slug = Column(String(50), unique=True, nullable=False)
+    name = Column(String(100), nullable=False)
+    file_extension = Column(String(10), nullable=False)
+    mime_type = Column(String(100), nullable=False)
+    sort_order = Column(Integer, nullable=False, default=0)
 
 
 class CronJob(Base):
@@ -216,6 +239,7 @@ class CronJob(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     client_id = Column(UUID(as_uuid=True), ForeignKey("clients.id", ondelete="CASCADE"), nullable=False)
+    script_category_id = Column(UUID(as_uuid=True), ForeignKey("script_categories.id", ondelete="SET NULL"), nullable=True)
     name = Column(String(150), nullable=False)
     description = Column(Text, nullable=True)
     filename = Column(String(255), nullable=False)
@@ -226,3 +250,4 @@ class CronJob(Base):
     created_at = Column(TIMESTAMP(timezone=True), default=utcnow, nullable=False)
 
     client = relationship("Client", viewonly=True)
+    script_category = relationship("ScriptCategory", lazy="joined")

@@ -8,14 +8,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from database import get_db
-from models import KnowledgeDocument, Client, User
+from models import KnowledgeDocument, KbCategory, Client, User
 from schemas import KnowledgeDocumentOut
 from auth_deps import get_current_user, check_client_access
 from storage import knowledge_dir, unique_filename
 
 router = APIRouter(tags=["knowledge"])
-
-VALID_CATEGORIES = {"integrations", "automations", "issues"}
 
 
 @router.get("/knowledge", response_model=list[KnowledgeDocumentOut])
@@ -29,7 +27,14 @@ async def list_knowledge_docs(
     if client_id:
         stmt = stmt.where(KnowledgeDocument.client_id == client_id)
     if category:
-        stmt = stmt.where(KnowledgeDocument.category == category)
+        cat_result = await db.execute(
+            select(KbCategory.id).where(KbCategory.slug == category)
+        )
+        cat_id = cat_result.scalar_one_or_none()
+        if cat_id:
+            stmt = stmt.where(KnowledgeDocument.kb_category_id == cat_id)
+        else:
+            return []
     result = await db.execute(stmt)
     return result.scalars().all()
 
@@ -44,8 +49,10 @@ async def upload_knowledge_doc(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    if category not in VALID_CATEGORIES:
-        raise HTTPException(status_code=422, detail=f"category must be one of {sorted(VALID_CATEGORIES)}")
+    cat_result = await db.execute(select(KbCategory).where(KbCategory.slug == category))
+    kb_cat = cat_result.scalar_one_or_none()
+    if not kb_cat:
+        raise HTTPException(status_code=422, detail=f"Unknown category: {category}")
 
     client_result = await db.execute(select(Client).where(Client.id == client_id))
     if not client_result.scalar_one_or_none():
@@ -63,7 +70,7 @@ async def upload_knowledge_doc(
 
     doc = KnowledgeDocument(
         client_id=client_id,
-        category=category,
+        kb_category_id=kb_cat.id,
         name=name,
         description=description,
         filename=file.filename or "upload",

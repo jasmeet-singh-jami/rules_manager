@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useParams } from 'react-router-dom'
 import { useClients } from '../context/ClientContext'
 import { useAuth } from '../context/AuthContext'
 import { Icon } from '../components/Icon'
@@ -6,8 +7,8 @@ import { SkeletonRows } from '../components/Skeleton'
 import { EmptyState } from '../components/EmptyState'
 import { useToast } from '../components/Toast'
 import {
-  getCronJobs, uploadCronJob, downloadCronJob, deleteCronJob,
-  type CronJob,
+  getCronJobs, uploadCronJob, downloadCronJob, deleteCronJob, getScriptCategories,
+  type CronJob, type ScriptCategory,
 } from '../api/client'
 
 function formatBytes(bytes: number): string {
@@ -17,6 +18,9 @@ function formatBytes(bytes: number): string {
 }
 
 export function CronJobs() {
+  const { category = 'shell' } = useParams<{ category: string }>()
+  const [scriptCategories, setScriptCategories] = useState<ScriptCategory[]>([])
+  const categoryLabel = scriptCategories.find(c => c.slug === category)?.name ?? category
   const { hasEditAccess } = useAuth()
   const { toast } = useToast()
   const { clients } = useClients()
@@ -32,15 +36,17 @@ export function CronJobs() {
   const [downloading, setDownloading] = useState<string | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
 
+  useEffect(() => { getScriptCategories().then(setScriptCategories).catch(() => {}) }, [])
+
   useEffect(() => {
     let cancel = false
     setLoading(true)
-    getCronJobs(clientFilter || undefined)
+    getCronJobs(clientFilter || undefined, category)
       .then(j => { if (!cancel) setJobs(j) })
       .catch(() => {})
       .finally(() => { if (!cancel) setLoading(false) })
     return () => { cancel = true }
-  }, [clientFilter])
+  }, [clientFilter, category])
 
   const filtered = useMemo(() => {
     const ql = q.trim().toLowerCase()
@@ -70,9 +76,10 @@ export function CronJobs() {
         name: form.name.trim(),
         description: form.description.trim(),
         script: form.script,
+        script_type: category,
       })
       setJobs(prev => [job, ...prev])
-      toast('Cron job saved', 'ok')
+      toast('Script saved', 'ok')
       setShowModal(false)
     } catch {
       setFormError('Save failed')
@@ -106,7 +113,7 @@ export function CronJobs() {
     try {
       await deleteCronJob(id)
       setJobs(prev => prev.filter(j => j.id !== id))
-      toast('Cron job deleted', 'ok')
+      toast('Script deleted', 'ok')
     } catch {
       toast('Delete failed', 'danger')
     } finally {
@@ -118,13 +125,13 @@ export function CronJobs() {
     <div className="page">
       <div className="page-head">
         <div>
-          <h1 className="page-title">Cron Jobs</h1>
-          <div className="page-sub">Client scheduled job scripts</div>
+          <h1 className="page-title">Scripts — {categoryLabel}</h1>
+          <div className="page-sub">Client automation scripts</div>
         </div>
         {editableClients.length > 0 && (
           <div className="page-actions">
             <button className="btn accent" onClick={openModal}>
-              <Icon name="plus" /> Add Cron Job
+              <Icon name="plus" /> Add Script
             </button>
           </div>
         )}
@@ -133,14 +140,14 @@ export function CronJobs() {
       <div className="toolbar">
         <div className="tb-input">
           <Icon name="search" />
-          <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search cron jobs…" />
+          <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search scripts…" />
         </div>
         <select className="select" value={clientFilter} onChange={e => setClientFilter(e.target.value)}>
           <option value="">All clients</option>
           {clients.map(c => <option key={c.id} value={c.id}>{c.code}</option>)}
         </select>
         <div className="tb-spacer" />
-        <span className="tb-meta">{filtered.length} cron jobs</span>
+        <span className="tb-meta">{filtered.length} scripts</span>
       </div>
 
       <div className="table-wrap">
@@ -159,7 +166,7 @@ export function CronJobs() {
             {loading ? <SkeletonRows count={4} cols={6} /> :
               filtered.length === 0 ? (
                 <tr><td colSpan={6}>
-                  <EmptyState icon="clock" title="No cron jobs yet" body="Upload a cron job script to get started." />
+                  <EmptyState icon="clock" title={`No ${categoryLabel} scripts yet`} body="Upload a script to get started." />
                 </td></tr>
               ) : filtered.map(job => {
                 const client = clients.find(c => c.id === job.client_id)
@@ -206,7 +213,7 @@ export function CronJobs() {
       {showModal && (
         <div className="modal-backdrop" onClick={() => setShowModal(false)}>
           <div className="modal" onClick={e => e.stopPropagation()}>
-            <h2>Add Cron Job</h2>
+            <h2>Add {categoryLabel} Script</h2>
             {formError && <div className="callout danger small" style={{ marginBottom: 14 }}>{formError}</div>}
             <div className="field" style={{ marginBottom: 12 }}>
               <label>Client</label>
@@ -243,7 +250,7 @@ export function CronJobs() {
               <label>Script</label>
               <textarea
                 rows={10}
-                placeholder="Paste your cron job script here…"
+                placeholder={`Paste your ${categoryLabel} script here…`}
                 value={form.script}
                 onChange={e => setForm(f => ({ ...f, script: e.target.value }))}
                 style={{ fontFamily: 'monospace', fontSize: 13, resize: 'vertical' }}

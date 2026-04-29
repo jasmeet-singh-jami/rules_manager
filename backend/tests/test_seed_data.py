@@ -1,11 +1,12 @@
 import pytest
 from sqlalchemy import select
 from models import RuleType
+from seed_data import SEEDED_RULE_TYPE_SLUGS
 
 
 @pytest.mark.asyncio
 async def test_seed_creates_six_rule_types(db):
-    result = await db.execute(select(RuleType))
+    result = await db.execute(select(RuleType).where(RuleType.slug.in_(SEEDED_RULE_TYPE_SLUGS)))
     rule_types = result.scalars().all()
     assert len(rule_types) == 6
 
@@ -14,7 +15,8 @@ async def test_seed_creates_six_rule_types(db):
 async def test_seed_rule_type_slugs(db):
     result = await db.execute(select(RuleType.slug))
     slugs = {row[0] for row in result.all()}
-    assert slugs == {
+    assert SEEDED_RULE_TYPE_SLUGS.issubset(slugs)
+    assert SEEDED_RULE_TYPE_SLUGS == {
         "alert_classifier",
         "noise_suppression",
         "issue_correlation",
@@ -26,7 +28,9 @@ async def test_seed_rule_type_slugs(db):
 
 @pytest.mark.asyncio
 async def test_seed_pipeline_stages_are_unique_1_to_6(db):
-    result = await db.execute(select(RuleType.pipeline_stage))
+    result = await db.execute(
+        select(RuleType.pipeline_stage).where(RuleType.slug.in_(SEEDED_RULE_TYPE_SLUGS))
+    )
     stages = sorted(row[0] for row in result.all())
     assert stages == [1, 2, 3, 4, 5, 6]
 
@@ -40,5 +44,5 @@ async def test_seed_is_idempotent(db, seeded_engine):
     async with factory() as s:
         await seed_rule_types(s)
         await s.commit()
-    result = await db.execute(select(RuleType))
+    result = await db.execute(select(RuleType).where(RuleType.slug.in_(SEEDED_RULE_TYPE_SLUGS)))
     assert len(result.scalars().all()) == 6

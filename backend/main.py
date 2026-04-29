@@ -5,9 +5,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 
 from database import engine, Base
-from seed_data import seed_rule_types, seed_admin_user
+from seed_data import seed_rule_types, seed_admin_user, seed_script_categories, seed_kb_categories
 from database import AsyncSessionLocal
-from routers import clients, rule_types, rules, deployments, import_drl, auth, admin, functions, knowledge_base, cron_jobs
+from routers import clients, rule_types, rules, deployments, import_drl, auth, admin, functions, knowledge_base, kb_categories, cron_jobs, script_categories
 
 
 @asynccontextmanager
@@ -16,6 +16,8 @@ async def lifespan(app: FastAPI):
         await conn.run_sync(Base.metadata.create_all)
     async with AsyncSessionLocal() as session:
         await seed_rule_types(session)
+        await seed_kb_categories(session)
+        await seed_script_categories(session)
         await seed_admin_user(session)
         await session.commit()
     yield
@@ -39,7 +41,9 @@ app.include_router(auth.router, prefix="/api")
 app.include_router(admin.router, prefix="/api")
 app.include_router(functions.router, prefix="/api")
 app.include_router(knowledge_base.router, prefix="/api")
+app.include_router(kb_categories.router, prefix="/api")
 app.include_router(cron_jobs.router, prefix="/api")
+app.include_router(script_categories.router, prefix="/api")
 
 
 @app.get("/api/health")

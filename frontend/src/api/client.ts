@@ -31,6 +31,7 @@ export interface RuleType {
   name: string
   pipeline_stage: number
   drl_package: string
+  is_system_locked: boolean
   functions: DrlFunction[]
   imports: DrlImport[]
 }
@@ -62,10 +63,18 @@ export interface Deployment {
   created_at: string
 }
 
+export interface KbCategory {
+  id: string
+  slug: string
+  name: string
+  sort_order: number
+}
+
 export interface KnowledgeDocument {
   id: string
   client_id: string
-  category: string
+  kb_category_id: string | null
+  kb_category: KbCategory | null
   name: string
   description: string | null
   filename: string
@@ -75,9 +84,20 @@ export interface KnowledgeDocument {
   created_at: string
 }
 
+export interface ScriptCategory {
+  id: string
+  slug: string
+  name: string
+  file_extension: string
+  mime_type: string
+  sort_order: number
+}
+
 export interface CronJob {
   id: string
   client_id: string
+  script_category_id: string | null
+  script_category: ScriptCategory | null
   name: string
   description: string | null
   filename: string
@@ -169,8 +189,37 @@ export const deleteClient = (id: string) =>
 
 // ── Rule Types ────────────────────────────────────────────────────────────
 
+export interface RuleTypeCreatePayload {
+  slug: string
+  name: string
+  drl_package: string
+  pipeline_stage?: number
+}
+
+export interface RuleTypeUpdatePayload {
+  name?: string
+  pipeline_stage?: number
+}
+
+export interface RuleTypeReorderItem {
+  id: string
+  pipeline_stage: number
+}
+
 export const getRuleTypes = () =>
   request<RuleType[]>('/rule-types')
+
+export const createRuleType = (body: RuleTypeCreatePayload) =>
+  request<RuleType>('/rule-types', { method: 'POST', body: JSON.stringify(body) })
+
+export const updateRuleType = (id: string, body: RuleTypeUpdatePayload) =>
+  request<RuleType>(`/rule-types/${id}`, { method: 'PATCH', body: JSON.stringify(body) })
+
+export const deleteRuleType = (id: string) =>
+  request<void>(`/rule-types/${id}`, { method: 'DELETE' })
+
+export const reorderRuleTypes = (items: RuleTypeReorderItem[]) =>
+  request<void>('/rule-types/reorder', { method: 'POST', body: JSON.stringify(items) })
 
 export const getRuleFunctions = (ruleTypeId: string) =>
   request<DrlFunction[]>(`/rule-types/${ruleTypeId}/functions`)
@@ -279,6 +328,41 @@ export const confirmImport = (payload: ImportConfirmPayload) =>
     body: JSON.stringify(payload),
   })
 
+// ── KB Categories ─────────────────────────────────────────────────────────────
+
+export interface KbCategoryCreatePayload {
+  slug: string
+  name: string
+  sort_order?: number
+}
+
+export interface KbCategoryUpdatePayload {
+  name?: string
+  sort_order?: number
+}
+
+export interface CategoryReorderItem {
+  id: string
+  sort_order: number
+}
+
+export const getKbCategories = () =>
+  request<KbCategory[]>('/kb-categories')
+
+export const createKbCategory = (body: KbCategoryCreatePayload) =>
+  request<KbCategory>('/kb-categories', { method: 'POST', body: JSON.stringify(body) })
+
+export const updateKbCategory = (id: string, body: KbCategoryUpdatePayload) =>
+  request<KbCategory>(`/kb-categories/${id}`, { method: 'PATCH', body: JSON.stringify(body) })
+
+export const deleteKbCategory = (id: string, reassignTo?: string) => {
+  const qs = reassignTo ? `?reassign_to=${reassignTo}` : ''
+  return request<void>(`/kb-categories/${id}${qs}`, { method: 'DELETE' })
+}
+
+export const reorderKbCategories = (items: CategoryReorderItem[]) =>
+  request<void>('/kb-categories/reorder', { method: 'POST', body: JSON.stringify(items) })
+
 // ── Knowledge Base ────────────────────────────────────────────────────────────
 
 export const getKnowledgeDocs = (filters: KnowledgeDocFilters = {}) => {
@@ -328,11 +412,46 @@ export const downloadKnowledgeDoc = (id: string): Promise<Response> => {
 export const deleteKnowledgeDoc = (id: string) =>
   request<void>(`/knowledge/${id}`, { method: 'DELETE' })
 
+// ── Script Categories ─────────────────────────────────────────────────────────
+
+export interface ScriptCategoryCreatePayload {
+  slug: string
+  name: string
+  file_extension: string
+  mime_type: string
+  sort_order?: number
+}
+
+export interface ScriptCategoryUpdatePayload {
+  name?: string
+  file_extension?: string
+  mime_type?: string
+  sort_order?: number
+}
+
+export const getScriptCategories = () =>
+  request<ScriptCategory[]>('/script-categories')
+
+export const createScriptCategory = (body: ScriptCategoryCreatePayload) =>
+  request<ScriptCategory>('/script-categories', { method: 'POST', body: JSON.stringify(body) })
+
+export const updateScriptCategory = (id: string, body: ScriptCategoryUpdatePayload) =>
+  request<ScriptCategory>(`/script-categories/${id}`, { method: 'PATCH', body: JSON.stringify(body) })
+
+export const deleteScriptCategory = (id: string, reassignTo?: string) => {
+  const qs = reassignTo ? `?reassign_to=${reassignTo}` : ''
+  return request<void>(`/script-categories/${id}${qs}`, { method: 'DELETE' })
+}
+
+export const reorderScriptCategories = (items: CategoryReorderItem[]) =>
+  request<void>('/script-categories/reorder', { method: 'POST', body: JSON.stringify(items) })
+
 // ── Cron Jobs ─────────────────────────────────────────────────────────────────
 
-export const getCronJobs = (client_id?: string) => {
+export const getCronJobs = (client_id?: string, script_type?: string) => {
   const params = new URLSearchParams()
   if (client_id) params.set('client_id', client_id)
+  if (script_type) params.set('script_type', script_type)
   const qs = params.toString()
   return request<CronJob[]>(`/cron-jobs${qs ? `?${qs}` : ''}`)
 }
@@ -342,12 +461,14 @@ export const uploadCronJob = async (params: {
   name: string
   description: string
   script: string
+  script_type: string
 }): Promise<CronJob> => {
   const form = new FormData()
   form.append('client_id', params.client_id)
   form.append('name', params.name)
   form.append('description', params.description)
   form.append('script', params.script)
+  form.append('script_type', params.script_type)
   const token = localStorage.getItem('auth_token')
   const headers: Record<string, string> = {}
   if (token) headers['Authorization'] = `Bearer ${token}`

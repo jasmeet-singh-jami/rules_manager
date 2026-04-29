@@ -9,6 +9,8 @@ interface ClientContextValue {
   loading: boolean
   rulesVersion: number
   bumpRulesVersion: () => void
+  categoriesVersion: number
+  bumpCategoriesVersion: () => void
 }
 
 const STORAGE_KEY = 'polycloud.selectedClientId'
@@ -22,6 +24,8 @@ export function ClientProvider({ children }: { children: ReactNode }) {
   )
   const [rulesVersion, setRulesVersion] = useState(0)
   const bumpRulesVersion = useCallback(() => setRulesVersion(v => v + 1), [])
+  const [categoriesVersion, setCategoriesVersion] = useState(0)
+  const bumpCategoriesVersion = useCallback(() => setCategoriesVersion(v => v + 1), [])
 
   useEffect(() => {
     let cancelled = false
@@ -52,7 +56,7 @@ export function ClientProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <ClientContext.Provider value={{ selectedClientId, setSelectedClientId, addClient, clients, loading, rulesVersion, bumpRulesVersion }}>
+    <ClientContext.Provider value={{ selectedClientId, setSelectedClientId, addClient, clients, loading, rulesVersion, bumpRulesVersion, categoriesVersion, bumpCategoriesVersion }}>
       {children}
     </ClientContext.Provider>
   )

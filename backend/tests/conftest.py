@@ -10,7 +10,7 @@ TEST_DB_URL = os.getenv(
 )
 
 # Tables that survive clean_tables (seeded reference data)
-PRESERVED_TABLES = {"rule_types", "drl_functions", "drl_imports", "users", "tokens"}
+PRESERVED_TABLES = {"rule_types", "drl_functions", "drl_imports", "users", "tokens", "kb_categories", "script_categories"}
 
 
 def pytest_collection_modifyitems(items):
@@ -22,7 +22,7 @@ def pytest_collection_modifyitems(items):
 @pytest_asyncio.fixture(scope="session", loop_scope="session")
 async def seeded_engine():
     from database import Base
-    from seed_data import seed_rule_types, seed_admin_user
+    from seed_data import seed_rule_types, seed_kb_categories, seed_script_categories, seed_admin_user
 
     eng = create_async_engine(TEST_DB_URL, echo=False)
     async with eng.begin() as conn:
@@ -32,6 +32,8 @@ async def seeded_engine():
     factory = async_sessionmaker(eng, expire_on_commit=False, class_=AsyncSession)
     async with factory() as session:
         await seed_rule_types(session)
+        await seed_kb_categories(session)
+        await seed_script_categories(session)
         await seed_admin_user(session)
         await session.commit()
 

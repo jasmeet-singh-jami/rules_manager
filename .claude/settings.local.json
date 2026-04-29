@@ -1,7 +1,4 @@
 {
-  "enabledPlugins": {
-    "superpowers@claude-plugins-official": false
-  },
   "permissions": {
     "allow": [
       "Bash(*)",
@@ -59,10 +56,14 @@
       "mcp__playwright__browser_fill_form",
       "mcp__playwright__browser_click",
       "mcp__playwright__browser_evaluate",
-      "mcp__playwright__browser_close"
+      "mcp__playwright__browser_close",
+      "Skill(schedule)"
     ],
     "shell": "allow",
     "file_system": "allow",
     "network": "allow"
+  },
+  "enabledPlugins": {
+    "superpowers@claude-plugins-official": false
   }
 }

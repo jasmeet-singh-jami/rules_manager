@@ -1,8 +1,12 @@
 from __future__ import annotations
+import re
 from datetime import datetime
 from typing import Any, Optional
 from uuid import UUID
 from pydantic import BaseModel, ConfigDict, field_validator
+
+SLUG_RE = re.compile(r"^[a-z0-9-]+$")
+FILE_EXT_RE = re.compile(r"^\.[A-Za-z0-9]{1,10}$")
 
 
 # ── Clients ──────────────────────────────────────────────────────────────────
@@ -86,6 +90,7 @@ class RuleTypeOut(BaseModel):
     name: str
     pipeline_stage: int
     drl_package: str
+    is_system_locked: bool = False
     functions: list[DrlFunctionOut] = []
     imports: list[DrlImportOut] = []
 
@@ -291,12 +296,22 @@ class AccessRequestOut(BaseModel):
 
 # ── Knowledge Base ────────────────────────────────────────────────────────────
 
+class KbCategoryOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    slug: str
+    name: str
+    sort_order: int
+
+
 class KnowledgeDocumentOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
     client_id: UUID
-    category: str
+    kb_category_id: Optional[UUID]
+    kb_category: Optional[KbCategoryOut]
     name: str
     description: Optional[str]
     filename: str
@@ -306,13 +321,26 @@ class KnowledgeDocumentOut(BaseModel):
     created_at: datetime
 
 
-# ── Cron Jobs ─────────────────────────────────────────────────────────────────
+# ── Script Categories & Cron Jobs ─────────────────────────────────────────────
+
+class ScriptCategoryOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    slug: str
+    name: str
+    file_extension: str
+    mime_type: str
+    sort_order: int
+
 
 class CronJobOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
     client_id: UUID
+    script_category_id: Optional[UUID]
+    script_category: Optional[ScriptCategoryOut]
     name: str
     description: Optional[str]
     filename: str
@@ -320,3 +348,151 @@ class CronJobOut(BaseModel):
     mime_type: str
     uploaded_by: Optional[UUID]
     created_at: datetime
+
+
+# ── Category admin (KB / Scripts) ─────────────────────────────────────────────
+
+class KbCategoryCreate(BaseModel):
+    slug: str
+    name: str
+    sort_order: Optional[int] = None
+
+    @field_validator("slug")
+    @classmethod
+    def validate_slug(cls, v: str) -> str:
+        v = v.strip()
+        if not SLUG_RE.match(v):
+            raise ValueError("slug must match ^[a-z0-9-]+$")
+        return v
+
+    @field_validator("name")
+    @classmethod
+    def name_not_empty(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("name must not be empty")
+        return v.strip()
+
+
+class KbCategoryUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: Optional[str] = None
+    sort_order: Optional[int] = None
+
+    @field_validator("name")
+    @classmethod
+    def name_not_empty(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+        if not v.strip():
+            raise ValueError("name must not be empty")
+        return v.strip()
+
+
+class ScriptCategoryCreate(BaseModel):
+    slug: str
+    name: str
+    file_extension: str
+    mime_type: str
+    sort_order: Optional[int] = None
+
+    @field_validator("slug")
+    @classmethod
+    def validate_slug(cls, v: str) -> str:
+        v = v.strip()
+        if not SLUG_RE.match(v):
+            raise ValueError("slug must match ^[a-z0-9-]+$")
+        return v
+
+    @field_validator("file_extension")
+    @classmethod
+    def validate_ext(cls, v: str) -> str:
+        v = v.strip()
+        if not FILE_EXT_RE.match(v):
+            raise ValueError("file_extension must start with '.' followed by 1-10 alphanumerics")
+        return v
+
+    @field_validator("name", "mime_type")
+    @classmethod
+    def not_empty(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("must not be empty")
+        return v.strip()
+
+
+class ScriptCategoryUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: Optional[str] = None
+    file_extension: Optional[str] = None
+    mime_type: Optional[str] = None
+    sort_order: Optional[int] = None
+
+    @field_validator("file_extension")
+    @classmethod
+    def validate_ext(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+        v = v.strip()
+        if not FILE_EXT_RE.match(v):
+            raise ValueError("file_extension must start with '.' followed by 1-10 alphanumerics")
+        return v
+
+    @field_validator("name", "mime_type")
+    @classmethod
+    def not_empty(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+        if not v.strip():
+            raise ValueError("must not be empty")
+        return v.strip()
+
+
+class CategoryReorderItem(BaseModel):
+    id: UUID
+    sort_order: int
+
+
+# ── Rule Type admin ──────────────────────────────────────────────────────────
+
+class RuleTypeCreate(BaseModel):
+    slug: str
+    name: str
+    drl_package: str
+    pipeline_stage: Optional[int] = None
+
+    @field_validator("slug")
+    @classmethod
+    def validate_slug(cls, v: str) -> str:
+        v = v.strip()
+        if not SLUG_RE.match(v):
+            raise ValueError("slug must match ^[a-z0-9-]+$")
+        return v
+
+    @field_validator("name", "drl_package")
+    @classmethod
+    def not_empty(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("must not be empty")
+        return v.strip()
+
+
+class RuleTypeUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: Optional[str] = None
+    pipeline_stage: Optional[int] = None
+
+    @field_validator("name")
+    @classmethod
+    def name_not_empty(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+        if not v.strip():
+            raise ValueError("name must not be empty")
+        return v.strip()
+
+
+class RuleTypeReorderItem(BaseModel):
+    id: UUID
+    pipeline_stage: int

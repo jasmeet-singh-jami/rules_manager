@@ -32,7 +32,7 @@ async def test_upload_knowledge_doc(authed_client, tmp_path, monkeypatch):
     assert r.status_code == 201
     data = r.json()
     assert data["name"] == "Test Doc"
-    assert data["category"] == "integrations"
+    assert data["kb_category"]["slug"] == "integrations"
     assert data["filename"] == "test.txt"
     assert data["file_size"] == len(content)
     assert data["client_id"] == client_id
@@ -70,7 +70,16 @@ async def test_list_knowledge_docs_filtered_by_category(authed_client, tmp_path,
     await _upload_doc(authed_client, client_id, tmp_path, monkeypatch, category="issues")
     r = await authed_client.get("/api/knowledge?category=integrations")
     assert r.status_code == 200
-    assert all(d["category"] == "integrations" for d in r.json())
+    assert all(d["kb_category"]["slug"] == "integrations" for d in r.json())
+
+
+@pytest.mark.asyncio
+async def test_list_knowledge_docs_unknown_category_returns_empty(authed_client, tmp_path, monkeypatch):
+    client_id = await _make_client(authed_client)
+    await _upload_doc(authed_client, client_id, tmp_path, monkeypatch)
+    r = await authed_client.get("/api/knowledge?category=nonexistent")
+    assert r.status_code == 200
+    assert r.json() == []
 
 
 @pytest.mark.asyncio
@@ -104,3 +113,13 @@ async def test_delete_knowledge_doc(authed_client, tmp_path, monkeypatch):
 async def test_delete_nonexistent_doc(authed_client):
     r = await authed_client.delete("/api/knowledge/00000000-0000-0000-0000-000000000000")
     assert r.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_list_kb_categories(authed_client):
+    r = await authed_client.get("/api/kb-categories")
+    assert r.status_code == 200
+    slugs = [c["slug"] for c in r.json()]
+    assert "integrations" in slugs
+    assert "automations" in slugs
+    assert "issues" in slugs

@@ -5,7 +5,7 @@ import {
   Outlet,
   RouterProvider,
 } from 'react-router-dom'
-import { getRuleTypes } from './api/client'
+import { getRuleTypes, getKbCategories, getScriptCategories } from './api/client'
 import { AuthProvider } from './context/AuthContext'
 import { ClientProvider } from './context/ClientContext'
 import { Layout } from './components/layout/Layout'
@@ -43,6 +43,52 @@ function AdminOnlyRoute() {
       <AdminPage />
     </ProtectedRoute>
   )
+}
+
+export function KnowledgeIndexRedirect() {
+  const [status, setStatus] = useState<'loading' | 'ready' | 'empty' | 'error'>('loading')
+  const [targetSlug, setTargetSlug] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    getKbCategories()
+      .then(cats => {
+        if (cancelled) return
+        const first = cats[0]?.slug ?? null
+        setTargetSlug(first)
+        setStatus(first ? 'ready' : 'empty')
+      })
+      .catch(() => { if (!cancelled) setStatus('error') })
+    return () => { cancelled = true }
+  }, [])
+
+  if (status === 'ready' && targetSlug) return <Navigate to={`/knowledge/${targetSlug}`} replace />
+  if (status === 'empty') return <div className="page"><div className="empty">No knowledge base categories available</div></div>
+  if (status === 'error') return <div className="page"><div className="empty">Unable to load categories</div></div>
+  return <div className="page"><div className="empty">Loading...</div></div>
+}
+
+export function ScriptsIndexRedirect() {
+  const [status, setStatus] = useState<'loading' | 'ready' | 'empty' | 'error'>('loading')
+  const [targetSlug, setTargetSlug] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    getScriptCategories()
+      .then(cats => {
+        if (cancelled) return
+        const first = cats[0]?.slug ?? null
+        setTargetSlug(first)
+        setStatus(first ? 'ready' : 'empty')
+      })
+      .catch(() => { if (!cancelled) setStatus('error') })
+    return () => { cancelled = true }
+  }, [])
+
+  if (status === 'ready' && targetSlug) return <Navigate to={`/scripts/${targetSlug}`} replace />
+  if (status === 'empty') return <div className="page"><div className="empty">No script categories available</div></div>
+  if (status === 'error') return <div className="page"><div className="empty">Unable to load script categories</div></div>
+  return <div className="page"><div className="empty">Loading...</div></div>
 }
 
 export function RulesIndexRedirect() {
@@ -103,9 +149,10 @@ export function createAppRouter() {
         { path: 'deployments', element: <Deployments /> },
         { path: 'clients/:id/deployments', element: <Deployments /> },
         { path: 'import', element: <ImportDrl /> },
-        { path: 'knowledge', element: <Navigate to="/knowledge/integrations" replace /> },
+        { path: 'knowledge', element: <KnowledgeIndexRedirect /> },
         { path: 'knowledge/:category', element: <KnowledgeBase /> },
-        { path: 'cron-jobs', element: <CronJobs /> },
+        { path: 'scripts', element: <ScriptsIndexRedirect /> },
+        { path: 'scripts/:category', element: <CronJobs /> },
         { path: 'account', element: <AccountPage /> },
         { path: 'admin', element: <AdminOnlyRoute /> },
         { path: '*', element: <Navigate to="/" replace /> },

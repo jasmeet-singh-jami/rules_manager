@@ -1,9 +1,9 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from models import RuleType, DrlFunction, DrlImport, User
+from models import RuleType, DrlFunction, DrlImport, User, ScriptCategory, KbCategory
 from security import hash_password
 
-RULE_TYPES = [
+RULE_TYPES: list[dict] = [
     {
         "slug": "alert_classifier",
         "name": "Alert Classifier",
@@ -41,6 +41,8 @@ RULE_TYPES = [
         "drl_package": "com.infy.ceh.management.autonomics.tasks.impl",
     },
 ]
+
+SEEDED_RULE_TYPE_SLUGS: frozenset[str] = frozenset(rt["slug"] for rt in RULE_TYPES)
 
 # (statement, kind, is_shared)
 RULE_TYPE_IMPORTS = {
@@ -435,6 +437,40 @@ async def seed_rule_types(session: AsyncSession) -> None:
         for stmt, kind, is_shared in import_list:
             if stmt not in existing_stmts:
                 session.add(DrlImport(rule_type_id=rt.id, statement=stmt, kind=kind, is_shared=is_shared))
+
+
+KB_CATEGORIES = [
+    {"slug": "integrations", "name": "Integrations", "sort_order": 1},
+    {"slug": "automations",  "name": "Automations",  "sort_order": 2},
+    {"slug": "issues",       "name": "Issues",       "sort_order": 3},
+]
+
+
+async def seed_kb_categories(session: AsyncSession) -> None:
+    result = await session.execute(select(KbCategory.slug))
+    existing = {row[0] for row in result.all()}
+    for cat in KB_CATEGORIES:
+        if cat["slug"] not in existing:
+            session.add(KbCategory(**cat))
+    await session.flush()
+
+
+SCRIPT_CATEGORIES = [
+    {"slug": "shell",       "name": "Shell",       "file_extension": ".sh",   "mime_type": "text/x-sh",      "sort_order": 1},
+    {"slug": "powershell",  "name": "PowerShell",  "file_extension": ".ps1",  "mime_type": "text/plain",     "sort_order": 2},
+    {"slug": "python",      "name": "Python",      "file_extension": ".py",   "mime_type": "text/x-python",  "sort_order": 3},
+    {"slug": "ansible",     "name": "Ansible",     "file_extension": ".yml",  "mime_type": "text/yaml",      "sort_order": 4},
+    {"slug": "cron-jobs",   "name": "Cron Jobs",   "file_extension": ".sh",   "mime_type": "text/plain",     "sort_order": 5},
+]
+
+
+async def seed_script_categories(session: AsyncSession) -> None:
+    result = await session.execute(select(ScriptCategory.slug))
+    existing = {row[0] for row in result.all()}
+    for cat in SCRIPT_CATEGORIES:
+        if cat["slug"] not in existing:
+            session.add(ScriptCategory(**cat))
+    await session.flush()
 
 
 async def seed_admin_user(session: AsyncSession) -> None:

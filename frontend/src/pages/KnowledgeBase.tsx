@@ -7,15 +7,9 @@ import { SkeletonRows } from '../components/Skeleton'
 import { EmptyState } from '../components/EmptyState'
 import { useToast } from '../components/Toast'
 import {
-  getKnowledgeDocs, uploadKnowledgeDoc, downloadKnowledgeDoc, deleteKnowledgeDoc,
-  type KnowledgeDocument,
+  getKnowledgeDocs, uploadKnowledgeDoc, downloadKnowledgeDoc, deleteKnowledgeDoc, getKbCategories,
+  type KnowledgeDocument, type KbCategory,
 } from '../api/client'
-
-const CATEGORY_LABELS: Record<string, string> = {
-  integrations: 'Integrations',
-  automations: 'Automations',
-  issues: 'Issues',
-}
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`
@@ -29,6 +23,8 @@ export function KnowledgeBase() {
   const { toast } = useToast()
   const { clients } = useClients()
 
+  const [kbCategories, setKbCategories] = useState<KbCategory[]>([])
+  const categoryLabel = kbCategories.find(c => c.slug === category)?.name ?? category
   const [docs, setDocs] = useState<KnowledgeDocument[]>([])
   const [loading, setLoading] = useState(true)
   const [q, setQ] = useState('')
@@ -40,6 +36,8 @@ export function KnowledgeBase() {
   const [formError, setFormError] = useState('')
   const [downloading, setDownloading] = useState<string | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
+
+  useEffect(() => { getKbCategories().then(setKbCategories).catch(() => {}) }, [])
 
   useEffect(() => {
     let cancel = false
@@ -129,7 +127,7 @@ export function KnowledgeBase() {
     <div className="page">
       <div className="page-head">
         <div>
-          <h1 className="page-title">Knowledge Base · {CATEGORY_LABELS[category] ?? category}</h1>
+          <h1 className="page-title">Knowledge Base · {categoryLabel}</h1>
           <div className="page-sub">Client knowledge documents</div>
         </div>
         {editableClients.length > 0 && (
