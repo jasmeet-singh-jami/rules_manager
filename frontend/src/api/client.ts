@@ -401,6 +401,34 @@ export const uploadKnowledgeDoc = async (params: {
   return res.json() as Promise<KnowledgeDocument>
 }
 
+export const uploadKnowledgeDocFromUrl = async (params: {
+  client_id: string
+  category: string
+  name: string
+  description: string
+  file_url: string
+}): Promise<KnowledgeDocument> => {
+  const form = new FormData()
+  form.append('client_id', params.client_id)
+  form.append('category', params.category)
+  form.append('name', params.name)
+  form.append('description', params.description)
+  form.append('file_url', params.file_url)
+  const token = localStorage.getItem('auth_token')
+  const headers: Record<string, string> = {}
+  if (token) headers['Authorization'] = `Bearer ${token}`
+  const res = await fetch(`${BASE}/knowledge/from-url`, { method: 'POST', body: form, headers })
+  if (res.status === 401) {
+    localStorage.removeItem('auth_token')
+    localStorage.removeItem('auth_user')
+    localStorage.removeItem('auth_client_access')
+    window.location.href = '/login'
+    throw new Error('Unauthorized')
+  }
+  if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`)
+  return res.json() as Promise<KnowledgeDocument>
+}
+
 // TODO: redirect to /login on 401 (inherited gap from exportDeployment/exportRules)
 export const downloadKnowledgeDoc = (id: string): Promise<Response> => {
   const token = localStorage.getItem('auth_token')

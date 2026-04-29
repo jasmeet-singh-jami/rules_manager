@@ -1,7 +1,10 @@
+import re
 import aiofiles
+import httpx
 from uuid import UUID
 from typing import Optional
 from pathlib import Path
+from urllib.parse import urlparse
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, status
 from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -77,6 +80,75 @@ async def upload_knowledge_doc(
         file_path=str(dest_path),
         file_size=len(content),
         mime_type=file.content_type or "application/octet-stream",
+        uploaded_by=current_user.id,
+    )
+    db.add(doc)
+    try:
+        await db.commit()
+    except Exception:
+        dest_path.unlink(missing_ok=True)
+        raise
+    await db.refresh(doc)
+    return doc
+
+
+@router.post("/knowledge/from-url", response_model=KnowledgeDocumentOut, status_code=status.HTTP_201_CREATED)
+async def upload_knowledge_doc_from_url(
+    client_id: UUID = Form(...),
+    category: str = Form(...),
+    name: str = Form(...),
+    description: Optional[str] = Form(None),
+    file_url: str = Form(...),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    cat_result = await db.execute(select(KbCategory).where(KbCategory.slug == category))
+    kb_cat = cat_result.scalar_one_or_none()
+    if not kb_cat:
+        raise HTTPException(status_code=422, detail=f"Unknown category: {category}")
+
+    client_result = await db.execute(select(Client).where(Client.id == client_id))
+    if not client_result.scalar_one_or_none():
+        raise HTTPException(status_code=404, detail="Client not found")
+
+    await check_client_access(current_user, client_id, db)
+
+    try:
+        async with httpx.AsyncClient(follow_redirects=True, timeout=30) as http:
+            response = await http.get(file_url)
+            response.raise_for_status()
+    except httpx.HTTPStatusError as e:
+        raise HTTPException(status_code=422, detail=f"Remote server returned {e.response.status_code}")
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=422, detail=f"Failed to fetch URL: {e}")
+
+    content_disposition = response.headers.get("content-disposition", "")
+    filename = None
+    m = re.search(r'filename=["\']?([^"\';\r\n]+)', content_disposition)
+    if m:
+        filename = m.group(1).strip()
+    if not filename:
+        filename = Path(urlparse(file_url).path).name or "download"
+
+    content = response.content
+    mime_type = response.headers.get("content-type", "application/octet-stream").split(";")[0].strip()
+
+    dest_dir = knowledge_dir(str(client_id))
+    dest_name = unique_filename(filename)
+    dest_path = dest_dir / dest_name
+
+    async with aiofiles.open(dest_path, "wb") as f:
+        await f.write(content)
+
+    doc = KnowledgeDocument(
+        client_id=client_id,
+        kb_category_id=kb_cat.id,
+        name=name,
+        description=description,
+        filename=filename,
+        file_path=str(dest_path),
+        file_size=len(content),
+        mime_type=mime_type,
         uploaded_by=current_user.id,
     )
     db.add(doc)

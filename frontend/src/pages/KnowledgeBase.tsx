@@ -7,7 +7,8 @@ import { SkeletonRows } from '../components/Skeleton'
 import { EmptyState } from '../components/EmptyState'
 import { useToast } from '../components/Toast'
 import {
-  getKnowledgeDocs, uploadKnowledgeDoc, downloadKnowledgeDoc, deleteKnowledgeDoc, getKbCategories,
+  getKnowledgeDocs, uploadKnowledgeDoc, uploadKnowledgeDocFromUrl,
+  downloadKnowledgeDoc, deleteKnowledgeDoc, getKbCategories,
   type KnowledgeDocument, type KbCategory,
 } from '../api/client'
 
@@ -30,8 +31,10 @@ export function KnowledgeBase() {
   const [q, setQ] = useState('')
   const [clientFilter, setClientFilter] = useState('')
   const [showModal, setShowModal] = useState(false)
+  const [uploadMode, setUploadMode] = useState<'file' | 'url'>('file')
   const [form, setForm] = useState({ client_id: '', name: '', description: '' })
   const [file, setFile] = useState<File | null>(null)
+  const [fileUrl, setFileUrl] = useState('')
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState('')
   const [downloading, setDownloading] = useState<string | null>(null)
@@ -61,6 +64,8 @@ export function KnowledgeBase() {
   const openModal = () => {
     setForm({ client_id: editableClients[0]?.id ?? '', name: '', description: '' })
     setFile(null)
+    setFileUrl('')
+    setUploadMode('file')
     setFormError('')
     setShowModal(true)
   }
@@ -69,22 +74,35 @@ export function KnowledgeBase() {
     if (!form.client_id) { setFormError('Select a client'); return }
     if (!form.name.trim()) { setFormError('Name is required'); return }
     if (!form.description.trim()) { setFormError('Description is required'); return }
-    if (!file) { setFormError('Select a file'); return }
+    if (uploadMode === 'file') {
+      if (!file) { setFormError('Select a file'); return }
+    } else {
+      if (!fileUrl.trim()) { setFormError('Enter a URL'); return }
+      if (!/^https?:\/\/.+/.test(fileUrl.trim())) { setFormError('Enter a valid http(s) URL'); return }
+    }
     setSaving(true)
     setFormError('')
     try {
-      const doc = await uploadKnowledgeDoc({
-        client_id: form.client_id,
-        category,
-        name: form.name.trim(),
-        description: form.description.trim(),
-        file,
-      })
+      const doc = uploadMode === 'file'
+        ? await uploadKnowledgeDoc({
+            client_id: form.client_id,
+            category,
+            name: form.name.trim(),
+            description: form.description.trim(),
+            file: file!,
+          })
+        : await uploadKnowledgeDocFromUrl({
+            client_id: form.client_id,
+            category,
+            name: form.name.trim(),
+            description: form.description.trim(),
+            file_url: fileUrl.trim(),
+          })
       setDocs(prev => [doc, ...prev])
       toast('Document uploaded', 'ok')
       setShowModal(false)
     } catch {
-      setFormError('Upload failed')
+      setFormError(uploadMode === 'file' ? 'Upload failed' : 'Failed to fetch document from URL')
     } finally {
       setSaving(false)
     }
@@ -248,14 +266,45 @@ export function KnowledgeBase() {
                 onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
               />
             </div>
-            <div className="field" style={{ marginBottom: 20 }}>
-              <label>File</label>
-              <input type="file" onChange={e => setFile(e.target.files?.[0] ?? null)} />
+            <div className="field" style={{ marginBottom: 12 }}>
+              <label>Source</label>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <button
+                  type="button"
+                  className={`btn ${uploadMode === 'file' ? 'accent' : 'ghost'}`}
+                  onClick={() => { setUploadMode('file'); setFileUrl(''); setFormError('') }}
+                >
+                  <Icon name="upload" /> File
+                </button>
+                <button
+                  type="button"
+                  className={`btn ${uploadMode === 'url' ? 'accent' : 'ghost'}`}
+                  onClick={() => { setUploadMode('url'); setFile(null); setFormError('') }}
+                >
+                  <Icon name="link" /> URL
+                </button>
+              </div>
             </div>
+            {uploadMode === 'file' ? (
+              <div className="field" style={{ marginBottom: 20 }}>
+                <label>File</label>
+                <input type="file" onChange={e => setFile(e.target.files?.[0] ?? null)} />
+              </div>
+            ) : (
+              <div className="field" style={{ marginBottom: 20 }}>
+                <label>File URL</label>
+                <input
+                  type="url"
+                  placeholder="https://example.com/document.pdf"
+                  value={fileUrl}
+                  onChange={e => setFileUrl(e.target.value)}
+                />
+              </div>
+            )}
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
               <button className="btn ghost" onClick={() => setShowModal(false)}>Cancel</button>
               <button className="btn accent" onClick={handleUpload} disabled={saving}>
-                {saving ? 'Uploading…' : 'Upload'}
+                {saving ? (uploadMode === 'file' ? 'Uploading…' : 'Fetching…') : 'Upload'}
               </button>
             </div>
           </div>
