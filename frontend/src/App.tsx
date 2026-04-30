@@ -22,6 +22,7 @@ import { RuleEditorPage } from './pages/RuleEditorPage/RuleEditorPage'
 import { Overview } from './pages/Overview'
 import { KnowledgeBase } from './pages/KnowledgeBase'
 import { CronJobs } from './pages/CronJobs'
+import { Automations } from './pages/Automations'
 
 type RulesIndexStatus = 'loading' | 'ready' | 'empty' | 'error'
 
@@ -153,6 +154,7 @@ export function createAppRouter() {
         { path: 'knowledge/:category', element: <KnowledgeBase /> },
         { path: 'scripts', element: <ScriptsIndexRedirect /> },
         { path: 'scripts/:category', element: <CronJobs /> },
+        { path: 'automations', element: <Automations /> },
         { path: 'account', element: <AccountPage /> },
         { path: 'admin', element: <AdminOnlyRoute /> },
         { path: '*', element: <Navigate to="/" replace /> },

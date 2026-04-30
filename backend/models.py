@@ -35,6 +35,7 @@ class RuleType(Base):
     name = Column(String(100), nullable=False)
     pipeline_stage = Column(Integer, nullable=False)
     drl_package = Column(String(200), nullable=False)
+    builder_config = Column(JSONB, nullable=True)
 
     rules = relationship("Rule", back_populates="rule_type")
     functions = relationship("DrlFunction", back_populates="rule_type", cascade="all, delete-orphan", lazy="selectin")
@@ -251,3 +252,14 @@ class CronJob(Base):
 
     client = relationship("Client", viewonly=True)
     script_category = relationship("ScriptCategory", lazy="joined")
+
+
+class Automation(Base):
+    __tablename__ = "automations"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    category = Column(String(100), nullable=False)
+    sub_category = Column(String(100), nullable=False, default="")
+    script_name = Column(String(255), nullable=False)
+    description = Column(Text, nullable=True)
+    created_at = Column(TIMESTAMP(timezone=True), default=utcnow, nullable=False)

@@ -9,8 +9,42 @@ from models import Rule, Client, RuleType, User, DrlFunction, DrlImport
 from schemas import RuleCreate, RuleUpdate, RuleOut, RuleCopyRequest, RuleExportRequest
 from auth_deps import get_current_user, check_client_access
 from services.drl_generator import generate_drl_bundle
+from services.drl_condition_renderer import render_condition, normalize_condition
 
 router = APIRouter(tags=["rules"])
+
+
+async def _validate_builder_meta(
+    condition_meta: object,
+    condition_raw: Optional[str],
+    rule_type_id: UUID,
+    db: AsyncSession,
+) -> None:
+    """Raise 422 when condition_meta is builder mode and re-render doesn't match condition_raw."""
+    if not isinstance(condition_meta, dict):
+        return
+    if condition_meta.get("mode") != "builder":
+        return
+
+    rt_result = await db.execute(select(RuleType).where(RuleType.id == rule_type_id))
+    rt = rt_result.scalar_one_or_none()
+    if not rt or not rt.builder_config:
+        return
+
+    try:
+        rendered = render_condition(condition_meta, rt.builder_config)
+    except Exception as exc:
+        raise HTTPException(status_code=422, detail=f"condition_meta render error: {exc}") from exc
+
+    if normalize_condition(rendered) != normalize_condition(condition_raw or ""):
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "msg": "condition_meta and condition_raw are out of sync",
+                "expected": rendered,
+                "got": condition_raw,
+            },
+        )
 
 
 @router.get("/rules", response_model=list[RuleOut])
@@ -53,6 +87,7 @@ async def create_rule(
     db: AsyncSession = Depends(get_db),
 ):
     await check_client_access(current_user, body.client_id, db)
+    await _validate_builder_meta(body.condition_meta, body.condition_raw, body.rule_type_id, db)
     rule = Rule(**body.model_dump())
     db.add(rule)
     await db.commit()
@@ -85,7 +120,11 @@ async def update_rule(
     if not rule:
         raise HTTPException(status_code=404, detail="Rule not found")
     await check_client_access(current_user, rule.client_id, db)
-    for field, value in body.model_dump(exclude_none=True).items():
+    patch = body.model_dump(exclude_none=True)
+    meta_to_check = patch.get("condition_meta", rule.condition_meta)
+    raw_to_check = patch.get("condition_raw", rule.condition_raw)
+    await _validate_builder_meta(meta_to_check, raw_to_check, rule.rule_type_id, db)
+    for field, value in patch.items():
         setattr(rule, field, value)
     await db.commit()
     await db.refresh(rule)

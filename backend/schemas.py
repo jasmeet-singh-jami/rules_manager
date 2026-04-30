@@ -1,7 +1,7 @@
 from __future__ import annotations
 import re
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any, Literal as PyLiteral, Optional
 from uuid import UUID
 from pydantic import BaseModel, ConfigDict, field_validator
 
@@ -80,6 +80,17 @@ class DrlImportUpdate(BaseModel):
     is_shared: Optional[bool] = None
 
 
+# ── ConditionMeta AST ────────────────────────────────────────────────────────
+
+class ConditionMeta(BaseModel):
+    """Top-level wrapper for structured condition AST persisted in condition_meta."""
+    schema_version: int = 1
+    mode: PyLiteral['builder', 'raw']
+    template_key: str
+    bindings: list[Any]
+    expression: Optional[Any] = None
+
+
 # ── Rule Types ────────────────────────────────────────────────────────────────
 
 class RuleTypeOut(BaseModel):
@@ -93,6 +104,7 @@ class RuleTypeOut(BaseModel):
     is_system_locked: bool = False
     functions: list[DrlFunctionOut] = []
     imports: list[DrlImportOut] = []
+    builder_config: Optional[Any] = None
 
 
 # ── Rules ─────────────────────────────────────────────────────────────────────
@@ -496,3 +508,16 @@ class RuleTypeUpdate(BaseModel):
 class RuleTypeReorderItem(BaseModel):
     id: UUID
     pipeline_stage: int
+
+
+# ── Automations ───────────────────────────────────────────────────────────────
+
+class AutomationOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    category: str
+    sub_category: str
+    script_name: str
+    description: Optional[str]
+    created_at: datetime

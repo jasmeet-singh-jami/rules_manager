@@ -19,6 +19,7 @@ const WORKSPACE: NavEntry[] = [
   { to: '/deployments', icon: 'deploy', label: 'Deployments' },
   { to: '/knowledge', icon: 'folder', label: 'Knowledge Base' },
   { to: '/scripts', icon: 'clock', label: 'Scripts' },
+  { to: '/automations', icon: 'zap', label: 'Automations' },
   { to: '/clients', icon: 'clients', label: 'Clients' },
   { to: '/import', icon: 'import', label: 'Import DRL' },
 ]

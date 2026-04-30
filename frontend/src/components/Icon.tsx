@@ -6,7 +6,7 @@ export type IconName =
   | 'edit' | 'trash' | 'copy' | 'check' | 'x' | 'chevR' | 'chevD' | 'filter'
   | 'sun' | 'moon' | 'sparkles' | 'folder' | 'bell' | 'alertTri' | 'branch'
   | 'clock' | 'shield' | 'history' | 'code' | 'link' | 'tag' | 'layers'
-  | 'sliders' | 'eye' | 'arrowUp' | 'arrowDown' | 'logo'
+  | 'sliders' | 'eye' | 'arrowUp' | 'arrowDown' | 'logo' | 'zap'
 
 interface IconProps {
   name: IconName
@@ -64,6 +64,7 @@ export function Icon({ name, size = 16, className = '', style }: IconProps) {
     arrowUp:   <><path d="M12 19V5M5 12l7-7 7 7"/></>,
     arrowDown: <><path d="M12 5v14M5 12l7 7 7-7"/></>,
     logo:      <><path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M3 12l9 4 9-4"/><path d="M3 17l9 4 9-4"/></>,
+    zap:       <><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></>,
   }
   return <svg {...svg}>{paths[name]}</svg>
 }

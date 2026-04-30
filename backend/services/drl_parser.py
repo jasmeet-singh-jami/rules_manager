@@ -1,5 +1,6 @@
 import re
 from dataclasses import dataclass, field
+from typing import Optional
 
 
 @dataclass
@@ -21,6 +22,7 @@ class ParsedRule:
     action_raw: str
     required_function_names: list[str] = field(default_factory=list)
     required_import_statements: list[str] = field(default_factory=list)
+    condition_meta: Optional[dict] = field(default=None)
 
 
 @dataclass
@@ -125,10 +127,18 @@ def _extract_rules(
     return rules
 
 
-def parse_drl(text: str) -> ParsedDRL:
+def parse_drl(text: str, builder_config: Optional[dict] = None, template_key: str = "") -> ParsedDRL:
     package = _extract_package(text)
     imports = _extract_imports(text)
     functions = _extract_functions(text)
     local_func_names = {f.name for f in functions}
     rules = _extract_rules(text, local_func_names, imports)
+
+    if builder_config:
+        from services.drl_condition_parser import parse_condition
+        for rule in rules:
+            meta, confidence = parse_condition(rule.condition_raw, builder_config, template_key)
+            if confidence >= 0.5:
+                rule.condition_meta = meta
+
     return ParsedDRL(package=package, imports=imports, functions=functions, rules=rules)

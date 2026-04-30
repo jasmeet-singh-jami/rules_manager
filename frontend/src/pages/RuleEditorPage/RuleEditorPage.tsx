@@ -10,7 +10,12 @@ import { Icon } from '../../components/Icon'
 import { Switch } from '../../components/Switch'
 import { DrlPreview } from '../../components/DrlPreview'
 import { useToast } from '../../components/Toast'
-import { getActionPresets, getPrefix } from './presets'
+import { getActionPresets } from './presets'
+import { ConditionBuilder } from './ConditionBuilder'
+import {
+  type BuilderConfig, type ConditionMeta,
+  emptyConditionMeta, parseCondition, renderCondition,
+} from './conditionAst'
 
 function buildDrl(rt: RuleType, rule: Partial<Rule>): string {
   const header =
@@ -35,6 +40,7 @@ type FormState = {
   window: number | null
   enabled: boolean
   condition_raw: string
+  condition_meta: ConditionMeta | null
   action_raw: string
 }
 
@@ -46,6 +52,7 @@ function emptyForm(): FormState {
     window: null,
     enabled: true,
     condition_raw: '',
+    condition_meta: null,
     action_raw: '',
   }
 }
@@ -58,8 +65,20 @@ function formFromRule(rule: Rule): FormState {
     window: rule.window,
     enabled: rule.enabled,
     condition_raw: rule.condition_raw ?? '',
+    condition_meta: (rule.condition_meta as ConditionMeta | null) ?? null,
     action_raw: rule.action_raw ?? '',
   }
+}
+
+function stableStringify(v: unknown): string {
+  if (v === null || v === undefined || typeof v !== 'object') return JSON.stringify(v)
+  if (Array.isArray(v)) return '[' + v.map(stableStringify).join(',') + ']'
+  const sorted = Object.keys(v as object).sort()
+  return '{' + sorted.map(k => `${JSON.stringify(k)}:${stableStringify((v as Record<string, unknown>)[k])}`).join(',') + '}'
+}
+
+function buildTemplateKey(slug: string) {
+  return `${slug}.v1`
 }
 
 export function RuleEditorPage() {
@@ -78,14 +97,14 @@ export function RuleEditorPage() {
   const [newToolInput, setNewToolInput] = useState('')
 
   const rt = ruleTypes.find(ruleType => ruleType.slug === slug)
-  const prefix = rt ? getPrefix(rt.slug) : ''
+  const builderConfig: BuilderConfig | null = rt?.builder_config ?? null
+  const templateKey = slug ? buildTemplateKey(slug) : ''
   const presets = rt ? getActionPresets(rt.slug) : []
   const requiredFunctionNames = existing?.required_function_names ?? []
   const requiredImportStatements = existing?.required_import_statements ?? []
 
   useEffect(() => { getRuleTypes().then(setRuleTypes).catch(() => {}) }, [])
 
-  // Fetch rules to seed tool dropdown options
   useEffect(() => {
     if (!selectedClientId || !rt) return
     let cancelled = false
@@ -97,17 +116,34 @@ export function RuleEditorPage() {
         const found = rules.find(rule => rule.id === id) ?? null
         setExisting(found)
         if (found) {
-          const nextForm = formFromRule(found)
-          setForm(nextForm)
-          setInitial(nextForm)
+          const next = formFromRule(found)
+          // Lazy migration: if condition_meta is null and rule type supports builder, try parsing
+          if (next.condition_meta === null && builderConfig && found.condition_raw) {
+            const { meta, confidence } = parseCondition(found.condition_raw, builderConfig, templateKey)
+            if (confidence >= 0.5) {
+              next.condition_meta = { ...meta, mode: 'builder' }
+            }
+          }
+          setForm(next)
+          setInitial(next)
         }
       }
     })
     return () => { cancelled = true }
-  }, [id, rt?.slug, selectedClientId, prefix])
+  }, [id, rt?.slug, selectedClientId, builderConfig, templateKey])
+
+  // For new rules with builder config, initialise builder mode
+  useEffect(() => {
+    if (!id && builderConfig && form.condition_meta === null) {
+      const meta = emptyConditionMeta(builderConfig, templateKey)
+      const raw = renderCondition(meta, builderConfig)
+      setForm(prev => ({ ...prev, condition_meta: meta, condition_raw: raw }))
+      setInitial(prev => ({ ...prev, condition_meta: meta, condition_raw: raw }))
+    }
+  }, [id, builderConfig, templateKey]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const drlText = useMemo(() => rt ? buildDrl(rt, form) : '', [rt, form])
-  const isDirty = JSON.stringify(form) !== JSON.stringify(initial)
+  const isDirty = stableStringify(form) !== stableStringify(initial)
 
   const blocker = useBlocker(isDirty && !saving)
 
@@ -152,6 +188,7 @@ export function RuleEditorPage() {
           window: form.window,
           enabled: form.enabled,
           condition_raw: form.condition_raw,
+          condition_meta: form.condition_meta,
           action_raw: form.action_raw,
         })
         toast('Rule updated', 'ok')
@@ -165,8 +202,8 @@ export function RuleEditorPage() {
           window: form.window,
           enabled: form.enabled,
           condition_raw: form.condition_raw,
+          condition_meta: form.condition_meta,
           action_raw: form.action_raw,
-          condition_meta: null,
           action_meta: null,
           required_function_names: null,
           required_import_statements: null,
@@ -176,8 +213,9 @@ export function RuleEditorPage() {
       setInitial(form)
       bumpRulesVersion()
       navigate(`/rules/${rt.slug}`)
-    } catch {
-      toast('Save failed', 'danger')
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Save failed'
+      toast(msg.includes('422') ? 'Condition mismatch — meta/raw out of sync' : 'Save failed', 'danger')
     } finally {
       setSaving(false)
     }
@@ -283,6 +321,7 @@ export function RuleEditorPage() {
             <div className="field">
               <label>Description</label>
               <input
+                type="text"
                 value={form.description}
                 onChange={e => update({ description: e.target.value })}
                 placeholder="Describe what this rule does in plain English"
@@ -295,23 +334,29 @@ export function RuleEditorPage() {
               <div>
                 <div className="editor-section-title">
                   <span className="num">2</span> Conditions
-                  {prefix && <span className="badge accent mono" style={{ marginLeft: 8 }}>{prefix}.*</span>}
+                  {builderConfig && builderConfig.field_path_prefix.length > 0 && (
+                    <span className="badge accent mono" style={{ marginLeft: 8 }}>
+                      {builderConfig.field_path_prefix.join('.')}.*
+                    </span>
+                  )}
                 </div>
                 <div className="editor-section-desc">
-                  Write raw DRL condition. Join multiple clauses with <span className="mono">&&</span>.
-                  {prefix && <> Prefix: <span className="mono">{prefix}.</span></>}
+                  {builderConfig
+                    ? 'Use the Builder to add structured conditions, or switch to Manual for raw DRL.'
+                    : 'Write raw DRL condition. Join multiple clauses with &&.'}
                 </div>
               </div>
             </div>
 
-            <div className="field">
-              <textarea
-                value={form.condition_raw}
-                onChange={e => update({ condition_raw: e.target.value })}
-                placeholder='e.g. sourceId == "LogicMonitor" && severity > 3'
-                style={{ minHeight: 140 }}
-              />
-            </div>
+            <ConditionBuilder
+              conditionRaw={form.condition_raw}
+              conditionMeta={form.condition_meta}
+              builderConfig={builderConfig}
+              slug={rt.slug}
+              templateKey={templateKey}
+              onChangeRaw={raw => update({ condition_raw: raw })}
+              onChangeMeta={meta => update({ condition_meta: meta })}
+            />
           </div>
 
           <div className="editor-section">

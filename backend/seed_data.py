@@ -1,5 +1,5 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, update
 from models import RuleType, DrlFunction, DrlImport, User, ScriptCategory, KbCategory
 from security import hash_password
 
@@ -43,6 +43,62 @@ RULE_TYPES: list[dict] = [
 ]
 
 SEEDED_RULE_TYPE_SLUGS: frozenset[str] = frozenset(rt["slug"] for rt in RULE_TYPES)
+
+# Per-slug builder configs — null for slugs that stay raw-only (issue_correlation, email_ingestion)
+BUILDER_CONFIGS: dict[str, dict] = {
+    "noise_suppression": {
+        "binding": {"style": "alias", "alias": "request", "fact_type": "NoiseSuppressionRequest"},
+        "field_path_prefix": ["groupedAlert"],
+        "fields": [
+            {"name": "sourceId",      "label": "Source",       "type": "string", "allowed_ops": ["==", "!=", "matches", "not matches"]},
+            {"name": "alertName",     "label": "Alert name",   "type": "string", "allowed_ops": ["==", "!=", "matches", "not matches"]},
+            {"name": "severity",      "label": "Severity",     "type": "enum",   "enum": ["CRITICAL", "MAJOR", "WARN", "INFO"], "allowed_ops": ["==", "!="]},
+            {"name": "resourceId",    "label": "Resource ID",  "type": "string", "allowed_ops": ["==", "!=", "matches", "contains"]},
+            {"name": "description",   "label": "Description",  "type": "string", "allowed_ops": ["==", "!=", "matches", "contains"]},
+            {"name": "state",         "label": "State",        "type": "string", "allowed_ops": ["==", "!="]},
+        ],
+        "helper_functions": [
+            {"name": "getDurationAfterCreatedTime", "args": [{"kind": "binding"}], "return_type": "number"},
+        ],
+        "allow_groups": True,
+    },
+    "alert_classifier": {
+        "binding": {"style": "alias", "alias": "alert", "fact_type": "IPPAlert"},
+        "field_path_prefix": [],
+        "fields": [
+            {"name": "sourceId",    "label": "Source",      "type": "string", "allowed_ops": ["==", "!=", "matches"]},
+            {"name": "alertName",   "label": "Alert name",  "type": "string", "allowed_ops": ["==", "!=", "matches"]},
+            {"name": "severity",    "label": "Severity",    "type": "enum",   "enum": ["CRITICAL", "MAJOR", "WARN", "INFO"], "allowed_ops": ["==", "!="]},
+            {"name": "resourceId",  "label": "Resource ID", "type": "string", "allowed_ops": ["==", "!=", "matches"]},
+            {"name": "description", "label": "Description", "type": "string", "allowed_ops": ["==", "!=", "matches", "contains"]},
+        ],
+        "helper_functions": [],
+        "allow_groups": True,
+    },
+    "incident_rules": {
+        "binding": {"style": "dollar", "var": "incidentRequest", "fact_type": "IncidentCreationRequestDto"},
+        "field_path_prefix": [],
+        "fields": [
+            {"name": "severity",    "label": "Severity",    "type": "enum",   "enum": ["CRITICAL", "MAJOR", "WARN", "INFO"], "allowed_ops": ["==", "!="]},
+            {"name": "source",      "label": "Source",      "type": "string", "allowed_ops": ["==", "!=", "matches"]},
+            {"name": "description", "label": "Description", "type": "string", "allowed_ops": ["==", "!=", "matches", "contains"]},
+        ],
+        "helper_functions": [],
+        "allow_groups": True,
+    },
+    "recommendation": {
+        "binding": {"style": "alias", "alias": "issue", "fact_type": "IPPIssue"},
+        "field_path_prefix": [],
+        "fields": [
+            {"name": "severity",    "label": "Severity",    "type": "enum",   "enum": ["CRITICAL", "MAJOR", "WARN", "INFO"], "allowed_ops": ["==", "!="]},
+            {"name": "source",      "label": "Source",      "type": "string", "allowed_ops": ["==", "!=", "matches"]},
+            {"name": "description", "label": "Description", "type": "string", "allowed_ops": ["==", "!=", "matches", "contains"]},
+            {"name": "name",        "label": "Name",        "type": "string", "allowed_ops": ["==", "!=", "matches"]},
+        ],
+        "helper_functions": [],
+        "allow_groups": True,
+    },
+}
 
 # (statement, kind, is_shared)
 RULE_TYPE_IMPORTS = {
@@ -413,6 +469,12 @@ async def seed_rule_types(session: AsyncSession) -> None:
 
     rt_result = await session.execute(select(RuleType))
     all_rts = {rt.slug: rt for rt in rt_result.scalars().all()}
+
+    # Upsert builder_config for configured slugs
+    for slug, cfg in BUILDER_CONFIGS.items():
+        rt = all_rts.get(slug)
+        if rt and rt.builder_config is None:
+            rt.builder_config = cfg
 
     for slug, func_list in RULE_TYPE_FUNCTIONS.items():
         rt = all_rts.get(slug)

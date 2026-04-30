@@ -7,7 +7,7 @@ from fastapi.responses import FileResponse
 from database import engine, Base
 from seed_data import seed_rule_types, seed_admin_user, seed_script_categories, seed_kb_categories
 from database import AsyncSessionLocal
-from routers import clients, rule_types, rules, deployments, import_drl, auth, admin, functions, knowledge_base, kb_categories, cron_jobs, script_categories
+from routers import clients, rule_types, rules, deployments, import_drl, auth, admin, functions, knowledge_base, kb_categories, cron_jobs, script_categories, automations
 
 
 @asynccontextmanager
@@ -44,6 +44,7 @@ app.include_router(knowledge_base.router, prefix="/api")
 app.include_router(kb_categories.router, prefix="/api")
 app.include_router(cron_jobs.router, prefix="/api")
 app.include_router(script_categories.router, prefix="/api")
+app.include_router(automations.router, prefix="/api")
 
 
 @app.get("/api/health")

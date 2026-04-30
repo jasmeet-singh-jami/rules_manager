@@ -34,6 +34,7 @@ export interface RuleType {
   is_system_locked: boolean
   functions: DrlFunction[]
   imports: DrlImport[]
+  builder_config: import('../pages/RuleEditorPage/conditionAst').BuilderConfig | null
 }
 
 export interface Rule {
@@ -555,3 +556,64 @@ export const denyAccessRequest = (requestId: string) =>
 
 export const setUserRole = (userId: string, role: 'admin' | 'contributor') =>
   request<void>(`/admin/users/${userId}/role`, { method: 'PATCH', body: JSON.stringify({ role }) })
+
+// ── Automations ───────────────────────────────────────────────────────────────
+
+export interface Automation {
+  id: string
+  category: string
+  sub_category: string
+  script_name: string
+  description: string | null
+  created_at: string
+}
+
+export interface AutomationFilters {
+  category?: string
+  sub_category?: string
+  search?: string
+}
+
+export const getAutomations = (filters: AutomationFilters = {}) => {
+  const params = new URLSearchParams()
+  if (filters.category) params.set('category', filters.category)
+  if (filters.sub_category) params.set('sub_category', filters.sub_category)
+  if (filters.search) params.set('search', filters.search)
+  const qs = params.toString()
+  return request<Automation[]>(`/automations${qs ? `?${qs}` : ''}`)
+}
+
+export const downloadAutomationTemplate = (): Promise<Response> => {
+  const token = localStorage.getItem('auth_token')
+  const headers: Record<string, string> = {}
+  if (token) headers['Authorization'] = `Bearer ${token}`
+  return fetch(`${BASE}/automations/template`, { headers })
+}
+
+export const uploadAutomations = async (file: File): Promise<Automation[]> => {
+  const form = new FormData()
+  form.append('file', file)
+  const token = localStorage.getItem('auth_token')
+  const headers: Record<string, string> = {}
+  if (token) headers['Authorization'] = `Bearer ${token}`
+  const res = await fetch(`${BASE}/automations/upload`, { method: 'POST', body: form, headers })
+  if (res.status === 401) {
+    localStorage.removeItem('auth_token')
+    localStorage.removeItem('auth_user')
+    localStorage.removeItem('auth_client_access')
+    window.location.href = '/login'
+    throw new Error('Unauthorized')
+  }
+  if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`)
+  return res.json() as Promise<Automation[]>
+}
+
+export const createAutomation = (body: {
+  category: string
+  sub_category: string
+  script_name: string
+  description?: string
+}) => request<Automation>('/automations', { method: 'POST', body: JSON.stringify(body) })
+
+export const deleteAutomation = (id: string) =>
+  request<void>(`/automations/${id}`, { method: 'DELETE' })

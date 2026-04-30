@@ -14,6 +14,16 @@ import java.util.Arrays;
 global java.util.HashMap clusteredAlerts;  
 global Integer index;                     
 
+function void clusterAndRemove(java.util.List alerts, java.util.List rawList, String clusterKey, org.kie.api.runtime.rule.RuleContext kcontext) {
+    if (alerts != null && alerts.size() > 1) {
+        System.out.println("Cluster for " + clusterKey + " size=" + alerts.size());
+        java.util.Map clustered = (java.util.Map) kcontext.getKnowledgeRuntime().getGlobal("clusteredAlerts");
+        Integer idx = (Integer) kcontext.getKnowledgeRuntime().getGlobal("index");
+        clustered.put(idx, alerts);
+        kcontext.getKnowledgeRuntime().setGlobal("index", Integer.valueOf(idx + 1));
+        rawList.removeAll(alerts);
+    }
+}
 
 
 function String extractPort(String alertName) {
@@ -225,17 +235,8 @@ then
     for (Object key : affResources) {
         String resource = (String) key;
         java.util.List alerts =  getAlertsBasedDeviTypeAffectedResource(resource, $matchedAlertList);
-		System.out.println("Matched Alerts (Resource 24h) = " + $matchedAlertList.size());
-        if (alerts.size() > 1) {
-            System.out.println("Cluster for Resource " + resource + " size=" + alerts.size());
-            clusteredAlerts.put(index, alerts);
-            index++;
-            kcontext.getKnowledgeRuntime().setGlobal("index", Integer.valueOf(index));
-
-            // Prevent reprocessing downstream
-            $alertsRawList.removeAll(alerts);
-        }
-		System.out.println("resource "+resource+"-" + $alertsRawList.size());
+        clusterAndRemove(alerts, $alertsRawList, "Resource " + resource, kcontext);
+        System.out.println("resource "+resource+"-" + $alertsRawList.size());
     }
 end
 
@@ -260,17 +261,8 @@ then
     for (Object key : affResources) {
         String resource = (String) key;
         java.util.List alerts = getAlertsforSameAffectedResource(resource, $matchedAlertList);
-		System.out.println("Matched Alerts (Resource 24h) = " + $matchedAlertList.size());
-        if (alerts.size() > 1) {
-            System.out.println("Cluster for Resource " + resource + " size=" + alerts.size());
-            clusteredAlerts.put(index, alerts);
-            index++;
-            kcontext.getKnowledgeRuntime().setGlobal("index", Integer.valueOf(index));
-
-            // Prevent reprocessing downstream
-            $alertsRawList.removeAll(alerts);
-        }
-		System.out.println("resource "+resource+"-" + $alertsRawList.size());
+        clusterAndRemove(alerts, $alertsRawList, "Resource " + resource, kcontext);
+        System.out.println("resource "+resource+"-" + $alertsRawList.size());
     }
 end
 
@@ -295,17 +287,8 @@ then
     for (Object key : affResources) {
         String resource = (String) key;
         java.util.List alerts = getAlertsforSameAffectedResource(resource, $matchedAlertList);
-		System.out.println("Matched Alerts (Resource 24h) = " + $matchedAlertList.size());
-        if (alerts.size() > 1) {
-            System.out.println("Cluster for Resource " + resource + " size=" + alerts.size());
-            clusteredAlerts.put(index, alerts);
-            index++;
-            kcontext.getKnowledgeRuntime().setGlobal("index", Integer.valueOf(index));
-
-            // Prevent reprocessing downstream
-            $alertsRawList.removeAll(alerts);
-        }
-		System.out.println("resource "+resource+"-" + $alertsRawList.size());
+        clusterAndRemove(alerts, $alertsRawList, "Resource " + resource, kcontext);
+        System.out.println("resource "+resource+"-" + $alertsRawList.size());
     }
 end
 
@@ -332,17 +315,8 @@ then
     for (Object key : affectedHosts) {
         String host = (String) key;
         java.util.List alerts = getAlertsforSameAffectedHosts(host, $matchedAlertList);
-		System.out.println("Matched Alerts (Host 24h) = " + $matchedAlertList.size());
-        if (alerts.size() > 1) {
-            System.out.println("Cluster for host " + host + " size=" + alerts.size());
-            clusteredAlerts.put(index, alerts);
-            index++;
-            kcontext.getKnowledgeRuntime().setGlobal("index", Integer.valueOf(index));
-
-            // Prevent reprocessing downstream
-            $alertsRawList.removeAll(alerts);
-        }
-		System.out.println("host "+host+"-" + $alertsRawList.size());
+        clusterAndRemove(alerts, $alertsRawList, "host " + host, kcontext);
+        System.out.println("host "+host+"-" + $alertsRawList.size());
     }
 end
 
@@ -364,13 +338,7 @@ then
 		  for(Object key : affectedResourcesAlertKeys){
 			String resourceAlertKey=(String) key;
 			java.util.List alerts= getAlertsForResourceAlertKey(resourceAlertKey, $matchedAlertList);
-			if(alerts.size() > 1){
-				System.out.println("Alerts for resourceAlertKey: "+ resourceAlertKey);
-				clusteredAlerts.put(index,alerts);
-				index++;
-				kcontext.getKnowledgeRuntime().setGlobal( "index", Integer.valueOf(index));
-				$alertsRawList.removeAll(alerts);
-			}			
+			clusterAndRemove(alerts, $alertsRawList, "resourceAlertKey: " + resourceAlertKey, kcontext);
 		}	
 end
 
@@ -402,17 +370,8 @@ then
 		for (Object key1 : affectedInterfaces) {
 			String iname = (String) key1;
 			java.util.List alerts = groupAlertsBasedonHostAndIntrfaces(iname,host ,$matchedAlertList);
-			System.out.println("Matched Alerts (Host 24h) = " + $matchedAlertList.size());
-			if (alerts.size() > 1) {
-				System.out.println("Cluster for host " + host + " size=" + alerts.size());
-				clusteredAlerts.put(index, alerts);
-				index++;
-				kcontext.getKnowledgeRuntime().setGlobal("index", Integer.valueOf(index));
-
-				// Prevent reprocessing downstream
-				$alertsRawList.removeAll(alerts);
-			}
-			System.out.println("host "+host+"-" + $alertsRawList.size());
+            clusterAndRemove(alerts, $alertsRawList, "host " + host + " interface " + iname, kcontext);
+            System.out.println("host "+host+"-" + $alertsRawList.size());
 		}
     }
 end
@@ -439,19 +398,10 @@ then
 		String host = (String) key;
 		java.util.Set affectedPort = getPortFromAlertName($matchedAlertList,host);
 		System.out.println("host  = " + host);
-		System.out.println("affectedPort  = " + affectedPort);
 		for (Object key1 : affectedPort) {
 			String port = (String) key1;
 			java.util.List alerts = groupAlertsBasedonDeviceAndPort(host,port, $matchedAlertList);
-			System.out.println("Matched Alerts (Host 24h) = " + $matchedAlertList.size());
-			if (alerts.size() > 1) {
-				System.out.println("Cluster for host " + host + " size=" + alerts.size());
-				clusteredAlerts.put(index, alerts);
-				index++;
-				kcontext.getKnowledgeRuntime().setGlobal("index", Integer.valueOf(index));
-				// Prevent reprocessing downstream
-				$alertsRawList.removeAll(alerts);
-			}
+            clusterAndRemove(alerts, $alertsRawList, "host " + host + " port " + port, kcontext);
 			System.out.println("host "+host+"-" + $alertsRawList.size());
 		}
     }
@@ -481,15 +431,7 @@ then
     for (Object key : lmdIds) {
         String lmdId = (String) key;
         java.util.List alerts = getAlertsForLmdId(lmdId, $matchedAlertList);
-        if (alerts.size() > 1) {
-            System.out.println("Cluster for LMD " + lmdId + " size=" + alerts.size());
-            clusteredAlerts.put(index, alerts);
-            index++;
-            kcontext.getKnowledgeRuntime().setGlobal("index", Integer.valueOf(index));
-
-            // Prevent reprocessing downstream
-            $alertsRawList.removeAll(alerts);
-        }
-		System.out.println("lmdId "+lmdId+"-" + $alertsRawList.size());
+        clusterAndRemove(alerts, $alertsRawList, "LMD " + lmdId, kcontext);
+        System.out.println("lmdId "+lmdId+"-" + $alertsRawList.size());
     }
 end
